@@ -34,7 +34,8 @@ class Maximiser:
 				# Check if the evaluated line is still able to score = if all tiles are the same
 				if all(p[orientation] == initial for p in filled_tiles):
 					filled_n = len(filled_tiles)
-					score += initial * filled_n / (len(line) - filled_n + self.cautiousness)
+					line_n = len(line)
+					score += initial * filled_n / (line_n - filled_n + self.cautiousness)
 		
 		return score
 	
@@ -101,7 +102,7 @@ if __name__ == "__main__":
 	"""
 	Step through a single game and see the predicted scores for each tile's possible placements.
 	"""
-	board = Board(seed=344179)
+	board = Board(seed=468100)
 	solver = Maximiser(board, debug=True)
 	
 	for _ in range(N_TILES):

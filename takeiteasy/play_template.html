@@ -310,7 +310,7 @@
 		}
 
 		function loadNextPiece() {
-			if (pieces.length === 28 - 19) {
+			if (placedCount == 19) {
 				currentPiece = null;
 				updateNextPieceDisplay([0, 0, 0]);
 				tileCountSpan.textContent = "all";
@@ -356,11 +356,8 @@
 				// Restora pieces order
 				let last_placed = placed_history.pop();
 				if (last_placed) {
-					console.log(pieces);
 					pieces.unshift(currentPiece);
-					console.log(pieces);
 					pieces.unshift(last_placed);
-					console.log(pieces);
 					currentPiece = last_placed;
 				};
 

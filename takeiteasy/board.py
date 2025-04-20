@@ -50,7 +50,7 @@ class Board:
 			return match.group().replace("{", "{{").replace("}", "}}")  # Double braces to escape formatting
 
 		# Read HTML template
-		with open("./takeiteasy/hex.html", "r") as file:
+		with open("./takeiteasy/static_template.html", "r") as file:
 			html = file.read()
 
 		# Escape style definition braces and treat the file as a template string
@@ -85,7 +85,7 @@ class Board:
 		Export board to a HTML page that can be played on.
 		"""
 		# Read HTML template
-		with open("./takeiteasy/play.html", "r") as file:
+		with open("./takeiteasy/play_template.html", "r") as file:
 			html = file.read()
 
 		pieces_str = str(list(map(lambda p: list(p), self.pieces)))
