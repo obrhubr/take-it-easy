@@ -17,11 +17,11 @@ class Board:
 			board = [None] * N_TILES
 		self.board = board
 
-
 		# Select a playing stack
 		self.pieces = deepcopy(PIECES)
 
-		self.seed = int(time.time())*1000 + random.randint(0, 1000) if seed is None else seed
+		variability = 100000
+		self.seed = int(time.time())*variability + random.randint(0, variability) if seed is None else seed
 		random.seed(self.seed)
 		random.shuffle(self.pieces)
 
@@ -78,6 +78,27 @@ class Board:
 		# write to file
 		with open(filename, "w") as file:
 			file.write(board_html)
+	
+	def show_playable(self, filename="play.html", label=None, styles=None, piece=[-1, -1, -1]) -> str:
+		import re
+		"""
+		Export board to a HTML page that can be played on.
+		"""
+		# Read HTML template
+		with open("./takeiteasy/play.html", "r") as file:
+			html = file.read()
+
+		pieces_str = str(list(map(lambda p: list(p), self.pieces)))
+		board_html = re.sub(r"\{pieces_str\}", pieces_str, html)
+
+		# Set current board state
+		initial_str = str([list(map(lambda p: list(p) if p else None, self.board)), 0])
+		initial_str = re.sub(r"None", "null", initial_str)
+		board_html = re.sub(r"\{initial_str\}", initial_str, board_html)
+
+		# write to file
+		with open(filename, "w") as file:
+			file.write(board_html)
 
 	def occurences(self):
 		piece_occ = {n: 0 for n in range(1, 10)}
@@ -113,15 +134,14 @@ class Board:
 	def draw(self) -> tuple[int, int, int]:
 		return self.pieces.pop(0)
 	
-	def play(self, tile: tuple[int, int, int], idx: int):
-		self.board[idx] = tile
+	def play(self, piece: tuple[int, int, int], idx: int):
+		self.board[idx] = piece
 		self.filled_tiles.add(idx)
 		return
 	
 if __name__ == "__main__":
 	board = Board()
-	board.board = [board.pieces[idx] for idx in range(N_TILES)]
-	board.board[0] = None
 	
 	board.show()
+	board.show_playable()
 	print(board.score())
