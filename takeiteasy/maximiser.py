@@ -6,20 +6,16 @@ import matplotlib.colors as mcolors
 from board import Board, N_TILES, straights, diags_l, diags_r
 
 class Maximiser:
-	def __init__(self, board, lookup=None, debug=False, exp_coeff=0.5, real_coeff=0.5):
+	def __init__(self, board, lookup=None, debug=False):
 		self.board = board
 		self.debug = debug
 		self.lookup = lookup
 
-		# Coefficients of different scores for score estimations
-		self.exp_coeff = exp_coeff
-		self.real_coeff = real_coeff
+		# Hyperparameters
+		self.cautiousness = 5
 		return
 	
 	def score_probabilistic(self) -> int:
-		# Count how many of the line numbers are left in the stack
-		pieces_map = self.board.occurences()
-
 		score = 0
 		for rule, orientation in [
 			(straights, 0),
@@ -34,18 +30,11 @@ class Maximiser:
 				if initial is None:
 					continue
 
-				# Check if the evaluated line is still able to score
-				if all(p[orientation] == initial if p is not None else True for p in line):
-					# Calculate already filled tiles and empty ones
-					filled_tiles = len(list(filter(lambda l: l is not None, line)))
-					empty_tiles = len(line) - filled_tiles
-
-					# Cumulative probability of drawing the pieces to complete that line
-					n_pieces = pieces_map[initial]
-					n_total = len(self.board.pieces)
-					probability = np.prod([(n_pieces - n) / (n_total - n) for n in range(empty_tiles)])
-
-					score += initial * (filled_tiles + empty_tiles * probability)
+				filled_tiles = list(filter(lambda l: l is not None, line))
+				# Check if the evaluated line is still able to score = if all tiles are the same
+				if all(p[orientation] == initial for p in filled_tiles):
+					filled_n = len(filled_tiles)
+					score += initial * filled_n / (len(line) - filled_n + self.cautiousness)
 		
 		return score
 	
@@ -61,10 +50,7 @@ class Maximiser:
 				continue
 
 			self.board.board[idx] = piece
-			expected_score = self.score_probabilistic()
-			real_score = self.board.score()
-
-			score = expected_score * self.exp_coeff + real_score * self.real_coeff
+			score = self.score_probabilistic()
 
 			if self.debug:
 				scores[idx] = f"{score:.2f}"
@@ -115,7 +101,7 @@ if __name__ == "__main__":
 	"""
 	Step through a single game and see the predicted scores for each tile's possible placements.
 	"""
-	board = Board()
+	board = Board(seed=344179)
 	solver = Maximiser(board, debug=True)
 	
 	for _ in range(N_TILES):

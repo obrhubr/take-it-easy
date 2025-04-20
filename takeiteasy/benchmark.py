@@ -10,12 +10,13 @@ from board import Board
 from maximiser import Maximiser
 from lookup import load_best_moves
 
-SOLVERS = ["maximiser", "lookup"]
-lookup = load_best_moves()
+SOLVERS = ["maximiser"] #, "lookup"]
+if "lookup" in SOLVERS:
+	lookup = load_best_moves()
 
 def select_solver(solver_name, board):
 	if solver_name == "maximiser":
-		solver = Maximiser(deepcopy(board), real_coeff=0, exp_coeff=1)
+		solver = Maximiser(deepcopy(board))
 	elif solver_name == "lookup":
 		solver = Maximiser(deepcopy(board), lookup=lookup)
 	else:
@@ -38,12 +39,13 @@ def run_game(seed, solver_idx, solver_name):
 def benchmark_parallel(N=1000):
 	scores, times, seeds = {idx: [] for idx in range(len(SOLVERS))}, {idx: [] for idx in range(len(SOLVERS))}, {idx: [] for idx in range(len(SOLVERS))}
 
+	rand = np.random.randint(0, N*100, size=(N))
+	
 	tasks = []
 	with ProcessPoolExecutor() as executor:
-		for _ in range(N):
-			board = Board()
+		for num in range(N):
 			for idx, solver_name in enumerate(SOLVERS):
-				tasks.append(executor.submit(run_game, board.seed, idx, solver_name))
+				tasks.append(executor.submit(run_game, int(rand[num]), idx, solver_name))
 
 		for future in tqdm(tasks, unit="games"):
 			idx, score, seed, elapsed = future.result()
@@ -74,6 +76,6 @@ def analyse_output(scores, times, seeds, N):
 	
 if __name__ == "__main__":
 	#benchmark()
-	N = 5000
+	N = 10000
 	scores, times, seeds = benchmark_parallel(N)
 	analyse_output(scores, times, seeds, N)
