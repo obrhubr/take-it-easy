@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Take It Easy</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            height: 100vh;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .debug {
+            display: flex;
+            width: 500px;
+            flex-direction: column;
+        }
+
+        .debug-line {
+            margin-bottom: 10px;
+        }
+
+        ul {
+            margin: 0;
+        }
+
+        /* https://css-tricks.com/hexagons-and-beyond-flexible-responsive-grid-patterns-sans-media-queries/ */
+        .main {
+            /* size  */
+            --h: 100px;
+            --w: calc(var(--h) * 1.1547);
+            /* margin */
+            --m: 1px;
+
+            --f: calc(var(--h) + 4 * var(--m) - 1px);
+
+            display: flex;
+            width: calc(var(--w) * 4.8);
+
+            /* correct for non-centeredness of hexagons in .main */
+            margin-top: calc(-1 * var(--h));
+            margin-left: calc(var(--w) - (tan(30deg) * var(--h) / 2));
+        }
+
+        .container {
+            font-size: 0;
+        }
+
+        .container div {
+            display: inline-block;
+            font-size: initial;
+
+            height: var(--h);
+            width: var(--w);
+            margin: var(--m);
+            clip-path: polygon(0% 50%, 25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%);
+
+            margin-bottom: calc(var(--m) - var(--h) * 0.5);
+            margin-right: calc(var(--w) / 2 + var(--m)*4);
+
+            /* Make no-used tiles appear invisible */
+            visibility: hidden;
+        }
+
+        .container::before {
+            content: "";
+            width: calc(var(--w) - (tan(30deg) * var(--h) / 2) + var(--m)*2.8);
+            float: left;
+            height: 120%;
+            shape-outside: repeating-linear-gradient(#0000 0 calc(var(--f) - 3px),
+                    #000 0 var(--f));
+        }
+
+        .container .tile {
+            visibility: visible;
+            background-color: #eee;
+
+            position: relative;
+            overflow: hidden;
+        }
+
+        .label {
+            height: 100%;
+            width: 100%;
+
+            /* Align text on line */
+            display: flex;
+            justify-content: center;  
+            align-items: center;         
+        }
+
+        .line {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: calc(var(--w) * 0.1);
+            height: 100%;
+            transform-origin: center;
+            /* no color unless the tile is placed */
+            background-color: #000 0;
+
+            /* Align text on line */
+            display: inline-block;
+            text-align: center;            
+        }
+
+        /* Vertical */
+        .line.v {
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        /* Diagonal top-left to bottom-right */
+        .line.d1 {
+            transform: translate(-50%, -50%) rotate(60deg);
+        }
+
+        /* Diagonal top-right to bottom-left */
+        .line.d2 {
+            transform: translate(-50%, -50%) rotate(-60deg);
+        }
+
+        /* Colour definitions for the different tiles */
+        .l1 .v { background-color: rgb(180, 180, 180); }
+        .l5 .v { background-color: rgb(33, 157, 132); }
+        .l9 .v { background-color: rgb(255, 248, 50); }
+
+        .l2 .d1 { background-color: rgb(255, 214, 214); }
+        .l6 .d1 { background-color: rgb(255, 64, 64); }
+        .l7 .d1 { background-color: rgb(170, 215, 66); }
+
+        .l3 .d2 { background-color: rgb(255, 120, 230); }
+        .l4 .d2 { background-color: rgb(85, 221, 252); }
+        .l8 .d2 { background-color: rgb(255, 144, 47); }
+    </style>
+</head>
+
+<body>
+    <div id="debug" class="debug">
+        <div class="debug-line">Placed {n_tiles} pieces.</div>
+        
+        <div class="debug-line">
+            <div>Occurences of lines:</div>
+            <ul>
+                <li>Vertical |</li>
+                <li style="color: rgb(180, 180, 180);">1: {occ[1]}</li>
+                <li style="color: rgb(33, 157, 132);">5: {occ[5]}</li>
+                <li style="color: rgb(255, 248, 50);">9: {occ[9]}</li>
+
+                <li>Diagonal /</li>
+                <li style="color: rgb(255, 214, 214);">2: {occ[2]}</li>
+                <li style="color: rgb(255, 64, 64);">6: {occ[6]}</li>
+                <li style="color: rgb(170, 215, 66);">7: {occ[7]}</li>
+                
+                <li>Diagonal \</li>
+                <li style="color: rgb(255, 120, 230);">3: {occ[3]}</li>
+                <li style="color: rgb(85, 221, 252);">4: {occ[4]}</li>
+                <li style="color: rgb(255, 144, 47);">8: {occ[8]}</li>
+            </ul>
+        </div>
+
+        <div class="debug-line" style="display: {piece_visibility};">
+            <div style="width: 100px !important; margin: 0 !important;" class="main">
+                <div class="container">
+                    <div class="tile l{piece[0]} l{piece[1]} l{piece[2]}">
+                        <span class="line v">{piece[0]}</span>
+                        <span class="line d1">{piece[1]}</span>
+                        <span class="line d2">{piece[2]}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="main">
+        <div class="container">
+            <div class=""></div>
+            <div id="2" style="{styles[2]}" class="tile l{pieces[2][0]} l{pieces[2][1]} l{pieces[2][2]}">
+                <span class="label">{label[2]}</span>
+                <span class="line v">{pieces[2][0]}</span>
+                <span class="line d1">{pieces[2][1]}</span>
+                <span class="line d2">{pieces[2][2]}</span>
+            </div>
+            <div class=""></div>
+            <div id="1" style="{styles[1]}" class="tile l{pieces[1][0]} l{pieces[1][1]} l{pieces[1][2]}">
+                <span class="label">{label[1]}</span>
+                <span class="line v">{pieces[1][0]}</span>
+                <span class="line d1">{pieces[1][1]}</span>
+                <span class="line d2">{pieces[1][2]}</span>
+            </div>
+            <div id="6" style="{styles[6]}" class="tile l{pieces[6][0]} l{pieces[6][1]} l{pieces[6][2]}">
+                <span class="label">{label[6]}</span>
+                <span class="line v">{pieces[6][0]}</span>
+                <span class="line d1">{pieces[6][1]}</span>
+                <span class="line d2">{pieces[6][2]}</span>
+            </div>
+            <div id="0" style="{styles[0]}" class="tile l{pieces[0][0]} l{pieces[0][1]} l{pieces[0][2]}">
+                <span class="label">{label[0]}</span>
+                <span class="line v">{pieces[0][0]}</span>
+                <span class="line d1">{pieces[0][1]}</span>
+                <span class="line d2">{pieces[0][2]}</span>
+            </div>
+            <div id="5" style="{styles[5]}" class="tile l{pieces[5][0]} l{pieces[5][1]} l{pieces[5][2]}">
+                <span class="label">{label[5]}</span>
+                <span class="line v">{pieces[5][0]}</span>
+                <span class="line d1">{pieces[5][1]}</span>
+                <span class="line d2">{pieces[5][2]}</span>
+            </div>
+            <div id="11" style="{styles[11]}" class="tile l{pieces[11][0]} l{pieces[11][1]} l{pieces[11][2]}">
+                <span class="label">{label[11]}</span>
+                <span class="line v">{pieces[11][0]}</span>
+                <span class="line d1">{pieces[11][1]}</span>
+                <span class="line d2">{pieces[11][2]}</span>
+            </div>
+            <div id="4" style="{styles[4]}" class="tile l{pieces[4][0]} l{pieces[4][1]} l{pieces[4][2]}">
+                <span class="label">{label[4]}</span>
+                <span class="line v">{pieces[4][0]}</span>
+                <span class="line d1">{pieces[4][1]}</span>
+                <span class="line d2">{pieces[4][2]}</span>
+            </div>
+            <div id="10" style="{styles[10]}" class="tile l{pieces[10][0]} l{pieces[10][1]} l{pieces[10][2]}">
+                <span class="label">{label[10]}</span>
+                <span class="line v">{pieces[10][0]}</span>
+                <span class="line d1">{pieces[10][1]}</span>
+                <span class="line d2">{pieces[10][2]}</span>
+            </div>
+            <div id="3" style="{styles[3]}" class="tile l{pieces[3][0]} l{pieces[3][1]} l{pieces[3][2]}">
+                <span class="label">{label[3]}</span>
+                <span class="line v">{pieces[3][0]}</span>
+                <span class="line d1">{pieces[3][1]}</span>
+                <span class="line d2">{pieces[3][2]}</span>
+            </div>
+            <div id="9" style="{styles[9]}" class="tile l{pieces[9][0]} l{pieces[9][1]} l{pieces[9][2]}">
+                <span class="label">{label[9]}</span>
+                <span class="line v">{pieces[9][0]}</span>
+                <span class="line d1">{pieces[9][1]}</span>
+                <span class="line d2">{pieces[9][2]}</span>
+            </div>
+            <div id="15" style="{styles[15]}" class="tile l{pieces[15][0]} l{pieces[15][1]} l{pieces[15][2]}">
+                <span class="label">{label[15]}</span>
+                <span class="line v">{pieces[15][0]}</span>
+                <span class="line d1">{pieces[15][1]}</span>
+                <span class="line d2">{pieces[15][2]}</span>
+            </div>
+            <div id="8" style="{styles[8]}" class="tile l{pieces[8][0]} l{pieces[8][1]} l{pieces[8][2]}">
+                <span class="label">{label[8]}</span>
+                <span class="line v">{pieces[8][0]}</span>
+                <span class="line d1">{pieces[8][1]}</span>
+                <span class="line d2">{pieces[8][2]}</span>
+            </div>
+            <div id="14" style="{styles[14]}" class="tile l{pieces[14][0]} l{pieces[14][1]} l{pieces[14][2]}">
+                <span class="label">{label[14]}</span>
+                <span class="line v">{pieces[14][0]}</span>
+                <span class="line d1">{pieces[14][1]}</span>
+                <span class="line d2">{pieces[14][2]}</span>
+            </div>
+            <div id="7" style="{styles[7]}" class="tile l{pieces[7][0]} l{pieces[7][1]} l{pieces[7][2]}">
+                <span class="label">{label[7]}</span>
+                <span class="line v">{pieces[7][0]}</span>
+                <span class="line d1">{pieces[7][1]}</span>
+                <span class="line d2">{pieces[7][2]}</span>
+            </div>
+            <div id="13" style="{styles[13]}" class="tile l{pieces[13][0]} l{pieces[13][1]} l{pieces[13][2]}">
+                <span class="label">{label[13]}</span>
+                <span class="line v">{pieces[13][0]}</span>
+                <span class="line d1">{pieces[13][1]}</span>
+                <span class="line d2">{pieces[13][2]}</span>
+            </div>
+            <div id="18" style="{styles[18]}" class="tile l{pieces[18][0]} l{pieces[18][1]} l{pieces[18][2]}">
+                <span class="label">{label[18]}</span>
+                <span class="line v">{pieces[18][0]}</span>
+                <span class="line d1">{pieces[18][1]}</span>
+                <span class="line d2">{pieces[18][2]}</span>
+            </div>
+            <div id="12" style="{styles[12]}" class="tile l{pieces[12][0]} l{pieces[12][1]} l{pieces[12][2]}">
+                <span class="label">{label[12]}</span>
+                <span class="line v">{pieces[12][0]}</span>
+                <span class="line d1">{pieces[12][1]}</span>
+                <span class="line d2">{pieces[12][2]}</span>
+            </div>
+            <div id="17" style="{styles[17]}" class="tile l{pieces[17][0]} l{pieces[17][1]} l{pieces[17][2]}">
+                <span class="label">{label[17]}</span>
+                <span class="line v">{pieces[17][0]}</span>
+                <span class="line d1">{pieces[17][1]}</span>
+                <span class="line d2">{pieces[17][2]}</span>
+            </div>
+            <div class=""></div>
+            <div id="16" style="{styles[16]}" class="tile l{pieces[16][0]} l{pieces[16][1]} l{pieces[16][2]}">
+                <span class="label">{label[16]}</span>
+                <span class="line v">{pieces[16][0]}</span>
+                <span class="line d1">{pieces[16][1]}</span>
+                <span class="line d2">{pieces[16][2]}</span>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
