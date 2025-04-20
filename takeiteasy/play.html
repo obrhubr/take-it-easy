@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>Take It Easy</title>
+	<style>
+		html,
+		body {
+			margin: 0;
+			padding: 0;
+		}
+
+		body {
+			height: 100vh;
+
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.debug {
+			display: flex;
+			width: 500px;
+			flex-direction: column;
+		}
+
+		.debug-line {
+			margin-bottom: 10px;
+		}
+
+		ul {
+			margin: 0;
+		}
+
+		/* https://css-tricks.com/hexagons-and-beyond-flexible-responsive-grid-patterns-sans-media-queries/ */
+		.main {
+			/* size  */
+			--h: 100px;
+			--w: calc(var(--h) * 1.1547);
+			/* margin */
+			--m: 1px;
+
+			--f: calc(var(--h) + 4 * var(--m) - 1px);
+
+			display: flex;
+			width: calc(var(--w) * 4.8);
+
+			/* correct for non-centeredness of hexagons in .main */
+			margin-top: calc(-1 * var(--h));
+			margin-left: calc(var(--w) - (tan(30deg) * var(--h) / 2));
+		}
+
+		.undo-button {
+			width: 100px;
+		}
+
+		.container {
+			font-size: 0;
+		}
+
+		.container div {
+			display: inline-block;
+			font-size: initial;
+
+			height: var(--h);
+			width: var(--w);
+			margin: var(--m);
+			clip-path: polygon(0% 50%, 25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%);
+
+			margin-bottom: calc(var(--m) - var(--h) * 0.5);
+			margin-right: calc(var(--w) / 2 + var(--m)*4);
+
+			/* Make no-used tiles appear invisible */
+			visibility: hidden;
+		}
+
+		.container::before {
+			content: "";
+			width: calc(var(--w) - (tan(30deg) * var(--h) / 2) + var(--m)*2.8);
+			float: left;
+			height: 120%;
+			shape-outside: repeating-linear-gradient(#0000 0 calc(var(--f) - 3px),
+					#000 0 var(--f));
+		}
+
+		.container .tile {
+			visibility: visible;
+			background-color: #eee;
+
+			position: relative;
+			overflow: hidden;
+		}
+
+		.label {
+			height: 100%;
+			width: 100%;
+
+			/* Align text on line */
+			display: flex;
+			justify-content: center;  
+			align-items: center;         
+		}
+
+		.line {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			width: calc(var(--w) * 0.1);
+			height: 100%;
+			transform-origin: center;
+
+			/* Align text on line */
+			display: inline-block;
+			text-align: center;            
+		}
+
+		/* Vertical */
+		.line.v {
+			transform: translate(-50%, -50%) rotate(0deg);
+		}
+
+		/* Diagonal top-left to bottom-right */
+		.line.d1 {
+			transform: translate(-50%, -50%) rotate(60deg);
+		}
+
+		/* Diagonal top-right to bottom-left */
+		.line.d2 {
+			transform: translate(-50%, -50%) rotate(-60deg);
+		}
+
+		/* Colour definitions for the different tiles */
+		.l1 .v { background-color: rgb(180, 180, 180); }
+		.l5 .v { background-color: rgb(33, 157, 132); }
+		.l9 .v { background-color: rgb(255, 248, 50); }
+
+		.l2 .d1 { background-color: rgb(255, 214, 214); }
+		.l6 .d1 { background-color: rgb(255, 64, 64); }
+		.l7 .d1 { background-color: rgb(170, 215, 66); }
+
+		.l3 .d2 { background-color: rgb(255, 120, 230); }
+		.l4 .d2 { background-color: rgb(85, 221, 252); }
+		.l8 .d2 { background-color: rgb(255, 144, 47); }
+	</style>
+</head>
+
+<body>
+	<div id="debug" class="debug">
+		<button id="undo-button" class="undo-button">Undo</button>
+
+		<div class="debug-line">Placed <span id="tile-count"></span> pieces.</div>
+		<div class="debug-line">Score: <span id="score">0</span></div>
+
+		<div class="debug-line">Next Piece:</div>
+		<div class="debug-line">
+			<div style="width: 100px !important; margin: 0 !important;" class="main">
+				<div class="container">
+					<div id="next-piece" class="tile">
+						<span class="line v"></span>
+						<span class="line d1"></span>
+						<span class="line d2"></span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="main">
+		<div id="board" class="container">
+			<div class=""></div>
+			<div id="2" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div class=""></div>
+			<div id="1" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="6" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="0" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="5" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="11" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="4" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="10" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="3" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="9" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="15" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="8" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="14" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="7" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="13" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="18" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="12" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div id="17" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+			<div class=""></div>
+			<div id="16" class="tile">
+				<span class="line v"></span>
+				<span class="line d1"></span>
+				<span class="line d2"></span>
+			</div>
+		</div>
+	</div>
+	<script>
+		let currentPiece = null;
+		let placedCount = 1;
+
+		const nextPieceDiv = document.getElementById("next-piece");
+		const tileCountSpan = document.getElementById("tile-count");
+		const scoreSpan = document.getElementById("score");
+
+		const straights = [
+			[0, 3, 7],
+			[1, 4, 8, 12],
+			[2, 5, 9, 13, 16],
+			[6, 10, 14, 17],
+			[11, 15, 18]
+		];
+		const diags_r = [
+			[0, 1, 2],
+			[3, 4, 5, 6],
+			[7, 8, 9, 10, 11],
+			[12, 13, 14, 15],
+			[16, 17, 18]
+		];
+		const diags_l = [
+			[2, 6, 11],
+			[1, 5, 10, 15],
+			[0, 4, 9, 14, 18],
+			[3, 8, 13, 17],
+			[7, 12, 16]
+		];
+
+		const pieces = {pieces_str};// [[1, 2, 3], [1, 2, 4], [1, 2, 8], [1, 6, 3], [1, 6, 4], [1, 6, 8], [1, 7, 3], [1, 7, 4], [1, 7, 8], [5, 2, 3], [5, 2, 4], [5, 2, 8], [5, 6, 3], [5, 6, 4], [5, 6, 8], [5, 7, 3], [5, 7, 4], [5, 7, 8], [9, 2, 3], [9, 2, 4], [9, 2, 8], [9, 6, 3], [9, 6, 4], [9, 6, 8], [9, 7, 3], [9, 7, 4], [9, 7, 8]];
+        let history = {initial_str};// [];
+		let placed_history = [];
+		undo();
+
+		function updateNextPieceDisplay(piece) {
+			nextPieceDiv.className = `tile l${piece[0]} l${piece[1]} l${piece[2]}`;
+			nextPieceDiv.querySelector('.line.v').textContent = piece[0];
+			nextPieceDiv.querySelector('.line.d1').textContent = piece[1];
+			nextPieceDiv.querySelector('.line.d2').textContent = piece[2];
+		}
+
+		function loadNextPiece() {
+			if (pieces.length === 28 - 19) {
+				currentPiece = null;
+				updateNextPieceDisplay([0, 0, 0]);
+				tileCountSpan.textContent = "all";
+				nextPieceDiv.style.display = "none";
+				return;
+			};
+			currentPiece = pieces.shift();
+			updateNextPieceDisplay(currentPiece);
+		};
+
+		function saveState() {
+			const state = [];
+			for (let i = 0; i < 19; i++) {
+				const tile = getTileAt(i);
+				state.push(tile ? [...tile] : null);
+			}
+			history.push(state);
+		};
+
+		function placePiece(tileDiv) {
+			if (!currentPiece) return;
+			
+			tileDiv.className = `tile l${currentPiece[0]} l${currentPiece[1]} l${currentPiece[2]}`;
+			tileDiv.innerHTML = `
+				<span class="line v">${currentPiece[0]}</span>
+				<span class="line d1">${currentPiece[1]}</span>
+				<span class="line d2">${currentPiece[2]}</span>
+			`;
+			placedCount++;
+			tileCountSpan.textContent = placedCount;
+
+			// Calculate and show score
+			let score = scoreBoard()
+			scoreSpan.textContent = score;
+
+			placed_history.push(currentPiece);
+			saveState();
+			loadNextPiece();
+		};
+
+		function undo() {
+			if (history.length > 1) {
+				// Restora pieces order
+				let last_placed = placed_history.pop();
+				if (last_placed) {
+					console.log(pieces);
+					pieces.unshift(currentPiece);
+					console.log(pieces);
+					pieces.unshift(last_placed);
+					console.log(pieces);
+					currentPiece = last_placed;
+				};
+
+				// Restore board state
+				history.pop();
+				const lastState = history[history.length - 1];
+
+				// Apply the last state to the board
+				for (let i = 0; i < 19; i++) {
+					const tile = lastState[i];
+					const el = document.getElementById(i);
+					if (tile) {
+						el.querySelector('.line.v').textContent = tile[0];
+						el.querySelector('.line.d1').textContent = tile[1];
+						el.querySelector('.line.d2').textContent = tile[2];
+						el.className = `tile l${tile[0]} l${tile[1]} l${tile[2]}`;
+					} else {
+						el.querySelector('.line.v').textContent = '';
+						el.querySelector('.line.d1').textContent = '';
+						el.querySelector('.line.d2').textContent = '';
+						el.className = "tile";
+					};
+				};
+
+				placedCount--;
+				tileCountSpan.textContent = placedCount;
+
+				// Calculate and show score
+				let score = scoreBoard()
+				scoreSpan.textContent = score;
+
+				// Reload the latest piece
+				loadNextPiece();
+			};
+		};
+
+		function getTileAt(index) {
+			const el = document.getElementById(index);
+			if (!el) return null;
+
+			const v = parseInt(el.querySelector('.line.v')?.textContent);
+			const d1 = parseInt(el.querySelector('.line.d1')?.textContent);
+			const d2 = parseInt(el.querySelector('.line.d2')?.textContent);
+
+			if (isNaN(v) || isNaN(d1) || isNaN(d2)) return null;
+
+			return [v, d1, d2];
+		};
+
+		function scoreBoard() {
+			let score = 0;
+
+			const checkLines = (groups, orientation) => {
+				for (const line of groups) {
+					const tiles = line.map(getTileAt);
+
+					// Find first non-null tile and get value in that orientation
+					const initial = tiles.find(tile => tile !== null)?.[orientation];
+
+					if (initial !== undefined && tiles.every(tile => tile !== null && tile[orientation] === initial)) {
+						score += initial * tiles.length;
+					}
+				}
+			};
+
+			checkLines(straights, 0);
+			checkLines(diags_r, 1);
+			checkLines(diags_l, 2);
+
+			return score;
+		};
+
+        // Bind the undo button to the undo function
+        document.getElementById('undo-button').addEventListener('click', undo);
+
+		document.querySelectorAll("#board .tile").forEach(tile => {
+			tile.addEventListener("click", () => {
+				if (tile.className !== 'tile') return; // prevent overwriting
+				placePiece(tile);
+			});
+		});
+
+		loadNextPiece();
+	</script>
+</body>
+
+</html>

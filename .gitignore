@@ -1,7 +1,7 @@
 __pycache__
 
 output.html
-play.html
+./play.html
 lookup.pkl
 best_moves.pkl
 data.csv

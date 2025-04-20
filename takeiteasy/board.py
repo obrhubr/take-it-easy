@@ -140,8 +140,7 @@ class Board:
 		return
 	
 if __name__ == "__main__":
-	board = Board()
+	board = Board(seed=468100)
 	
 	board.show()
 	board.show_playable()
-	print(board.score())
