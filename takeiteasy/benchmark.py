@@ -75,7 +75,6 @@ def analyse_output(scores, times, seeds, N):
 	df.to_csv("data.csv")
 	
 if __name__ == "__main__":
-	#benchmark()
-	N = 10000
+	N = 5000
 	scores, times, seeds = benchmark_parallel(N)
 	analyse_output(scores, times, seeds, N)

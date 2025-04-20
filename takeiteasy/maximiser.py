@@ -12,10 +12,12 @@ class Maximiser:
 		self.lookup = lookup
 
 		# Hyperparameters
-		self.cautiousness = 5
+		self.cautiousness = 4
 		return
 	
-	def score_probabilistic(self) -> int:
+	def heuristic(self) -> int:
+		pieces_n = self.board.occurences()
+
 		score = 0
 		for rule, orientation in [
 			(straights, 0),
@@ -35,7 +37,12 @@ class Maximiser:
 				if all(p[orientation] == initial for p in filled_tiles):
 					filled_n = len(filled_tiles)
 					line_n = len(line)
-					score += initial * filled_n / (line_n - filled_n + self.cautiousness)
+
+					if line_n - filled_n > pieces_n[initial]:
+						score += 0
+					else:
+						score += (initial * filled_n) / (line_n - filled_n + 1 + self.cautiousness)
+						pieces_n[initial] -= line_n - filled_n
 		
 		return score
 	
@@ -51,7 +58,7 @@ class Maximiser:
 				continue
 
 			self.board.board[idx] = piece
-			score = self.score_probabilistic()
+			score = self.heuristic()
 
 			if self.debug:
 				scores[idx] = f"{score:.2f}"
@@ -115,6 +122,6 @@ if __name__ == "__main__":
 
 		solver.board.play(piece, idx)
 		# Wait for confirmation
-		input("Next move?")
+		#input("Next move?")
 
 	print(f"Scored: {solver.board.score()}")
