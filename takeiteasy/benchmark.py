@@ -11,6 +11,8 @@ from maximiser import Maximiser
 from lookup import load_best_moves
 
 SOLVERS = ["maximiser"] #, "lookup"]
+
+# Load preprocessed lookup table only if it's needed
 if "lookup" in SOLVERS:
 	lookup = load_best_moves()
 
@@ -39,7 +41,7 @@ def run_game(seed, solver_idx, solver_name):
 def benchmark_parallel(N=1000):
 	scores, times, seeds = {idx: [] for idx in range(len(SOLVERS))}, {idx: [] for idx in range(len(SOLVERS))}, {idx: [] for idx in range(len(SOLVERS))}
 
-	rand = np.random.randint(0, N*100, size=(N))
+	rand = np.random.randint(0, N*100, size=(N)) + int(time.time())
 	
 	tasks = []
 	with ProcessPoolExecutor() as executor:

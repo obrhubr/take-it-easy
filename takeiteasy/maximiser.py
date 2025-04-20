@@ -33,7 +33,7 @@ class Maximiser:
 					continue
 
 				filled_tiles = list(filter(lambda l: l is not None, line))
-				# Check if the evaluated line is still able to score = if all tiles are the same
+				# Check if the evaluated line is still able to score (= all tiles are the same or empty)
 				if all(p[orientation] == initial for p in filled_tiles):
 					filled_n = len(filled_tiles)
 					line_n = len(line)
