@@ -50,29 +50,29 @@ class Maximiser:
 		"""
 		Return board with tile placed optimally and the idx at which the piece was placed.
 		"""
-		best_score, best_idx = -1, -1
-		scores = {n: "" for n in range(N_TILES)}
+		best_reward, best_idx = -1, -1
+		rewards = {n: "" for n in range(N_TILES)}
 
 		for idx in range(N_TILES):
 			if idx in self.board.filled_tiles:
 				continue
 
 			self.board.board[idx] = piece
-			score = self.heuristic()
+			reward = self.heuristic()
 
 			if self.debug:
-				scores[idx] = f"{score:.2f}"
+				rewards[idx] = f"{reward:.2f}"
 
-			if score > best_score:
+			if reward > best_reward:
 				best_idx = idx
-				best_score = score
+				best_reward = reward
 
 			self.board.board[idx] = None
 
 		if best_idx == -1:
 			raise Exception("No move found.")
 
-		return best_idx, scores
+		return best_idx, rewards
 	
 	def play_game(self) -> int:
 		"""
@@ -122,6 +122,6 @@ if __name__ == "__main__":
 
 		solver.board.play(piece, idx)
 		# Wait for confirmation
-		#input("Next move?")
+		input("Next move?")
 
 	print(f"Scored: {solver.board.score()}")

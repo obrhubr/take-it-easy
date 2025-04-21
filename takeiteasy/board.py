@@ -9,7 +9,31 @@ N_TILES = 19
 # Diagonals pre computed
 straights = [(0, 3, 7), (1, 4, 8, 12), (2, 5, 9, 13, 16), (6, 10, 14, 17), (11, 15, 18)]
 diags_r = [(0, 1, 2), (3, 4, 5, 6), (7, 8, 9, 10, 11), (12, 13, 14, 15), (16, 17, 18)]
-diags_l = [(2, 6, 11), (1, 5, 10, 15), (0, 4, 9, 14, 18), (3, 8, 13, 17), (7, 12, 16)]		
+diags_l = [(2, 6, 11), (1, 5, 10, 15), (0, 4, 9, 14, 18), (3, 8, 13, 17), (7, 12, 16)]
+lines = [straights, diags_r, diags_l]
+
+# Map from tile index on board to affeted lines
+tile_to_lines = {
+	0: [0, 0, 2],
+	1: [1, 0, 1],
+	2: [2, 0, 0],
+	3: [0, 1, 3],
+	4: [1, 1, 2],
+	5: [2, 1, 1],
+	6: [3, 1, 0],
+	7: [0, 2, 4],
+	8: [1, 2, 3],
+	9: [2, 2, 2],
+	10: [3, 2, 1],
+	11: [4, 2, 0],
+	12: [1, 3, 4],
+	13: [2, 3, 3],
+	14: [3, 3, 2],
+	15: [4, 3, 1],
+	16: [2, 4, 4],
+	17: [3, 4, 3],
+	18: [4, 4, 2]
+}
 
 class Board:
 	def __init__(self, board=None, seed=None):
@@ -110,6 +134,19 @@ class Board:
 
 		return piece_occ
 	
+	def score_change(self, idx):
+		"""
+		Return the amount by which the score changed due to placing the tile at tile_idx=idx.
+		"""
+		score = 0
+
+		for orientation, line_idx in enumerate(tile_to_lines[idx]):
+			line = lines[orientation][line_idx]
+			if all(self.board[l] for l in line) and all(self.board[l][orientation] == self.board[line[0]][orientation] for l in line):
+				score += len(line) * self.board[line[0]][orientation]
+
+		return score
+	
 	def score(self) -> int:
 		"""
 		score returns an integer which is the score of the board.
@@ -118,11 +155,7 @@ class Board:
 		"""
 		score = 0
 
-		for rule, orientation in [
-			(straights, 0),
-			(diags_r, 1),
-			(diags_l, 2)
-		]:
+		for orientation, rule in enumerate(lines):
 			for line_indeces in rule:
 				line = [self.board[idx] for idx in line_indeces]
 				
