@@ -1,28 +1,230 @@
+import numpy as np
+from tqdm import tqdm
+import pickle
+
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+from torch.nn.functional import smooth_l1_loss
+
 from board import Board, N_TILES
-from lookup import interp
 from maximiser import Maximiser
 
-class NN(Maximiser):
+class Network:
+	def __init__(self, input_size: int = N_TILES*3*3, hidden_size: int = 2048, output_size: int = 100):
+		super().__init__()
+
+		self.input_size = input_size
+		self.output_size = output_size
+		self.net = nn.Sequential(
+			nn.Linear(input_size, hidden_size),
+			nn.LeakyReLU(),
+			nn.Linear(hidden_size, hidden_size // 2),
+			nn.LeakyReLU(),
+			nn.Linear(hidden_size // 2, hidden_size // 4),
+			nn.LeakyReLU(),
+			nn.Linear(hidden_size // 4, output_size)
+		)
+
+	def forward(self, x: torch.Tensor):
+		return self.net(x)
+	
+	def load(self, filename="model.pkl"):
+		self.net = torch.load(filename, weights_only=False)
+		return
+	
+	def save(self, filename="model.pkl"):
+		torch.save(self.net, filename)
+		return
+	
+class Trainer:
+	def __init__(
+			self,
+			batch_size: int = 256, 
+			games: int = 2048, 
+			iterations: int = 100, 
+			epochs: int = 8, 
+			lr: float = 3e-4, 
+			lr_decay: float = 0.97, 
+			epsilon: float = 0.5, 
+			epsilon_decay: float = 0.95
+		):
+		self.net = Network()
+
+		# Training parameters
+		self.iteration = 1
+		self.iterations = iterations
+
+		self.batch_size = batch_size
+		self.games = games
+		self.validation_steps = 1024
+		self.epochs = epochs
+
+		# Network parameters
+		self.lr = lr
+		self.lr_decay = lr_decay
+		self.optimizer = torch.optim.Adam(self.net.net.parameters(), self.lr)
+		self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, self.lr_decay)
+
+		# Randomness of action taken during training set generation
+		self.epsilon = epsilon
+		self.epsilon_decay = epsilon_decay
+
+		# Distribution
+		self.tau = (2 * torch.arange(self.net.output_size, dtype=torch.float) + 1) / (2 * self.net.output_size)
+
+		# Logging
+		self.losses = []
+		self.scores = []
+		return
+	
+	@torch.no_grad()
+	def create_dataset(self, use_net: bool = True):
+		"""
+		Dynamically create a dataset, using the trained model to predict the distributions.
+		"""
+		# Training data: number_of_games * (steps_in_each_game - 1) because first step is not added to training data
+		states = torch.empty((self.games * N_TILES - 1, self.net.input_size), dtype=torch.float)
+		target_distributions = torch.empty((self.games * N_TILES - 1, self.net.output_size), dtype=torch.float)
+		
+		for game_idx in tqdm(range(self.games), desc="Creating dataset"):
+			board = Board()
+			for step in range(N_TILES):
+				state = board.one_hot()
+				piece = board.draw()
+
+				next_states = torch.empty((len(board.empty_tiles), self.net.input_size), dtype=torch.float)
+				rewards = torch.zeros((len(board.empty_tiles)))
+				for p, tile_idx in enumerate(board.empty_tiles):
+					board.board[tile_idx] = piece
+					next_states[p] = torch.from_numpy(board.one_hot()).float()
+					rewards[p] = torch.from_numpy(np.array([board.score_change(tile_idx)]))
+					board.board[tile_idx] = None
+
+				# If the tile was not the last to be placed and the net is to be used
+				# To calculate the distribution
+				if step < N_TILES - 1 and use_net:
+					qd = self.net.net(next_states)
+				else:
+					qd = torch.zeros((len(board.empty_tiles), self.net.output_size), dtype=torch.float)
+
+				# Get best action to take
+				if np.random.ranf() > self.epsilon:
+					best_action = torch.argmax(qd.mean(1)) # Mean over dimension 1 (for each of the games)
+				else:
+					best_action = np.random.randint(len(board.empty_tiles))
+
+				if step > 0:
+					# Add (state, distribution after playing best move) to training set
+					idx = game_idx * (N_TILES - 1) + step - 1
+					states[idx] = torch.from_numpy(state)
+					target_distributions[idx] = rewards[best_action] + qd[best_action]
+
+				# Play the best action
+				board.play(piece, board.empty_tiles[best_action])
+
+			self.scores += [board.score()]
+
+		return TensorDataset(states, target_distributions)
+
+	@torch.no_grad()
+	def validate(self):
+		scores = []
+
+		self.net.net.eval()
+		for _ in tqdm(range(self.validation_steps), desc="Validating"):
+			board = Board()
+			for _ in range(N_TILES):
+				# Piece to be placed this round
+				piece = board.draw()
+
+				# Check all positions
+				best_reward, best_idx = -1, -1
+				for tile_idx in board.empty_tiles:
+					board.board[tile_idx] = piece
+					state = torch.from_numpy(board.one_hot()).float()
+					reward = board.score_change(tile_idx) + self.net.net(state).mean()
+					board.board[tile_idx] = None
+
+					if reward > best_reward:
+						best_idx = tile_idx
+						best_reward = reward
+
+				# Place the piece at the position with the highest reward
+				board.play(piece, best_idx)
+			
+			scores += [board.score()]
+		
+		return np.mean(scores)
+	
+	def quantile_regression_loss(self, qd: torch.Tensor, tqd: torch.Tensor):
+		mask = (tqd != -1)
+		weight = torch.abs((self.tau - (tqd < qd.detach()).float()))
+
+		qd, tqd = torch.broadcast_tensors(qd, tqd)
+		return (weight * mask * smooth_l1_loss(qd, tqd, reduction='none')).mean()
+
+	def train(self, validation_interval: int = 3):
+		while self.iteration < self.iterations:
+			dataset = self.create_dataset(use_net=self.iteration > 1)
+			dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+
+			self.net.net.train()
+			for _ in tqdm(range(self.epochs), desc=f'Training {self.iteration}'):
+				for states, target_distributions in dataloader:
+					self.optimizer.zero_grad()
+					qd = self.net.net(states)
+					loss = self.quantile_regression_loss(qd, target_distributions)
+
+					# Log loss
+					self.losses += [loss.item()]
+
+					loss.backward()
+					self.optimizer.step()
+
+			if self.iteration % validation_interval == 0:
+				validation_score = self.validate()
+				print(f"Validating model {self.iteration=}: {validation_score:.2f}")
+
+			self.lr_scheduler.step()
+			self.epsilon *= self.epsilon_decay
+			self.iteration += 1
+
+			self.save()
+		return
+	
+	def load(self, filename="trainer.pkl"):
+		with open(filename, "rb") as f:
+			self = pickle.load(f)
+	
+	def save(self, filename="trainer.pkl"):
+		with open(filename, "wb") as f:
+			pickle.dump(self, f)
+		self.net.save()
+
+class NNMaximiser(Maximiser):
+	def __init__(self, board, lookup=None, debug=False, reward_coeff=1, heuristic_coeff=1):
+		super().__init__(board, lookup, debug, reward_coeff, heuristic_coeff)
+
+		self.net = Network()
+		self.net.load()
+		return
+
 	def heuristic(self):
-		return super().heuristic()
+		if len(self.board.filled_tiles) == N_TILES - 1:
+			return 0
+		
+		states = torch.empty((1, N_TILES*3*3), dtype=torch.float)
+		states[0] = torch.from_numpy(self.board.one_hot())
+		with torch.no_grad():
+			qd = self.net.net(states)
+		return float(qd.mean(1))
 	
 if __name__ == "__main__":
-	"""
-	Step through a single game and see the predicted scores for each tile's possible placements.
-	"""
-	board = Board(seed=468100)
-	solver = Maximiser(board, debug=True)
-	
-	for _ in range(N_TILES):
-		piece = solver.board.draw()
-		idx, score_labels = solver.solve(piece)
-		
-		if solver.debug:
-			styles = {n: f"background-color: {interp(n, score_labels)};" for n in range(N_TILES)}
-		solver.board.show(label=score_labels, styles=styles, piece=piece)
+	continue_training = True
 
-		solver.board.play(piece, idx)
-		# Wait for confirmation
-		#input("Next move?")
+	trainer = Trainer()
+	if continue_training:
+		trainer.load()
 
-	print(f"Scored: {solver.board.score()}")
+	trainer.train()

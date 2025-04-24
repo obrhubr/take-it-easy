@@ -6,13 +6,15 @@ import matplotlib.colors as mcolors
 from board import Board, N_TILES, straights, diags_l, diags_r
 
 class Maximiser:
-	def __init__(self, board, lookup=None, debug=False):
+	def __init__(self, board, lookup=None, debug=False, reward_coeff=0, heuristic_coeff=1):
 		self.board = board
 		self.debug = debug
 		self.lookup = lookup
 
 		# Hyperparameters
 		self.cautiousness = 4
+		self.reward_coeff = reward_coeff
+		self.heuristic_coeff = heuristic_coeff
 		return
 	
 	def heuristic(self) -> int:
@@ -58,7 +60,9 @@ class Maximiser:
 				continue
 
 			self.board.board[idx] = piece
-			reward = self.heuristic()
+			
+			score_change = self.board.score_change(idx) * self.reward_coeff if self.reward_coeff > 0 else 0
+			reward = score_change + self.heuristic() * self.heuristic_coeff
 
 			if self.debug:
 				rewards[idx] = f"{reward:.2f}"
@@ -87,7 +91,7 @@ class Maximiser:
 				idx = self.lookup[key]
 			else:
 				idx, _ = self.solve(piece)
-				
+			
 			self.board.play(piece, idx)
 
 		return self.board.score()

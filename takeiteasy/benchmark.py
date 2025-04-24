@@ -8,9 +8,10 @@ from concurrent.futures import ProcessPoolExecutor
 from board import Board
 
 from maximiser import Maximiser
+from nn import NNMaximiser
 from lookup import load_best_moves
 
-SOLVERS = ["maximiser"] #, "lookup"]
+SOLVERS = ["nn", "maximiser" "lookup"]
 
 # Load preprocessed lookup table only if it's needed
 if "lookup" in SOLVERS:
@@ -19,6 +20,8 @@ if "lookup" in SOLVERS:
 def select_solver(solver_name, board):
 	if solver_name == "maximiser":
 		solver = Maximiser(deepcopy(board))
+	elif solver_name == "nn":
+		solver = NNMaximiser(deepcopy(board))
 	elif solver_name == "lookup":
 		solver = Maximiser(deepcopy(board), lookup=lookup)
 	else:

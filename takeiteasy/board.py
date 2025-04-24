@@ -1,4 +1,5 @@
 from copy import deepcopy
+import numpy as np
 import random
 import time
 
@@ -51,6 +52,7 @@ class Board:
 
 		# Empty tiles
 		self.filled_tiles = set()
+		self.empty_tiles = [n for n in range(N_TILES)]
 		return
 	
 	def clone(self):
@@ -64,6 +66,22 @@ class Board:
 		new_board.seed = self.seed if hasattr(self, "seed") else int(time.time())*1000 + random.randint(0, 1000)
 
 		return new_board
+	
+	def one_hot(self):
+		"""
+		Return a one-hot encoded version of the current board.
+		Shape: (19, 3, 3). For each tile - 3 lines, for each line - 3 possible values.
+
+		Taken from: https://github.com/polarbart/TakeItEasyAI/blob/master/takeiteasy.py
+		"""
+		board = np.zeros((19, 3, 3), dtype=np.bool)
+		for idx, piece in enumerate(self.board):
+			if piece is not None:
+				p = self.board[idx]
+				board[idx, 0, (p[0] - 1) // 4] = True # straight
+				board[idx, 1, 0 if p[1] == 2 else (p[1] - 5)] = True # diag_r
+				board[idx, 2, 2 if p[2] == 8 else (p[2] - 3)] = 1 # diag_l
+		return board.flatten()
 	
 	def show(self, filename="output.html", label=None, styles=None, piece=[-1, -1, -1]) -> str:
 		import re
@@ -170,6 +188,7 @@ class Board:
 	def play(self, piece: tuple[int, int, int], idx: int):
 		self.board[idx] = piece
 		self.filled_tiles.add(idx)
+		self.empty_tiles.remove(idx)
 		return
 	
 if __name__ == "__main__":
