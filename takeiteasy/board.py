@@ -76,7 +76,7 @@ class Board:
 
 		return new_board
 	
-	def one_hot(self):
+	def one_hot(self) -> np.array:
 		"""
 		Return a one-hot encoded version of the current board.
 		Shape: (19, 3, 3). For each tile - 3 lines, for each line - 3 possible values.
@@ -92,7 +92,7 @@ class Board:
 				board[idx, 2, 2 if p[2] == 8 else (p[2] - 3)] = 1 # diag_l
 		return board.flatten()
 	
-	def show(self, filename="output.html", tile_values=None, piece=[-1, -1, -1]) -> str:
+	def show(self, filename="output.html", tile_values=None, piece=[-1, -1, -1]):
 		"""
 		Export board to a HTML page for easy viewing.
 		"""
@@ -143,7 +143,7 @@ class Board:
 		with open(filename, "w") as file:
 			file.write(board_html)
 	
-	def show_playable(self, filename="play.html") -> str:
+	def show_playable(self, filename="play.html"):
 		"""
 		Export board to an interactive HTML page.
 		"""
@@ -164,7 +164,7 @@ class Board:
 			file.write(board_html)
 		return
 
-	def occurences(self):
+	def occurences(self) -> dict[int, int]:
 		"""
 		Return dictionary mapping each line to the number of tiles which it appears on still left in the game.
 		"""
@@ -177,7 +177,7 @@ class Board:
 
 		return piece_occ
 	
-	def score_change(self, idx: int):
+	def score_change(self, idx: int) -> int:
 		"""
 		Return the amount by which the score changed due to placing the tile at tile_idx=idx.
 		"""
