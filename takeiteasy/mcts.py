@@ -165,16 +165,16 @@ class MCTS:
 				node = node.parent
 
 		# Return the scores of each possible tile idx for visualisation purposes
-		score_labels = {i: "" for i in range(N_TILES)}
+		tile_values = {}
 		if self.debug:
 			for c in rootnode.children.values():
-				score_labels[c.tile_idx] = f"{c.reward:.2f}"
+				tile_values[c.tile_idx] = c.reward
 
 		# Get the best action and set the new cached rootnode
 		best_action = rootnode.best_action()
 		self.rootnode = best_action
 
-		return best_action.tile_idx, score_labels, rootnode
+		return best_action.tile_idx, tile_values, rootnode
 
 	def play_game(self) -> int:
 		"""
@@ -202,17 +202,14 @@ if __name__ == "__main__":
 	
 	for _ in range(N_TILES):
 		piece = solver.board.draw()
-		idx, score_labels, _ = solver.run(piece)
+		idx, tile_values, _ = solver.run(piece)
 		
-		if solver.debug:
-			styles = {n: f"background-color: {interp(n, score_labels)};" for n in range(N_TILES)}
-		solver.board.show(label=score_labels, styles=styles, piece=piece)
+		solver.board.show(tile_values=tile_values, piece=piece)
 
 		solver.board.play(piece, idx)
 		
 		# Wait for confirmation
 		input("Next move?")
-		solver.board.show(piece=piece)
 
 	solver.board.show()
 	print(f"Scored: {solver.board.score()}")

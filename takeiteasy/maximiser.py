@@ -102,7 +102,7 @@ if __name__ == "__main__":
 		piece = solver.board.draw()
 		idx, tile_values = solver.solve(piece)
 		
-		solver.board.show(tile_values=tile_values, piece=piece)
+		solver.board.show_playable(tile_values=tile_values, piece=piece)
 
 		solver.board.play(piece, idx)
 		# Wait for confirmation
