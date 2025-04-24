@@ -1,8 +1,3 @@
-import numpy as np
-
-import matplotlib
-import matplotlib.colors as mcolors
-
 from board import Board, N_TILES, straights, diags_l, diags_r
 
 class Maximiser:
@@ -53,7 +48,7 @@ class Maximiser:
 		Return board with tile placed optimally and the idx at which the piece was placed.
 		"""
 		best_reward, best_idx = -1, -1
-		rewards = {n: "" for n in range(N_TILES)}
+		rewards = {}
 
 		for idx in range(N_TILES):
 			if idx in self.board.filled_tiles:
@@ -65,7 +60,7 @@ class Maximiser:
 			reward = score_change + self.heuristic() * self.heuristic_coeff
 
 			if self.debug:
-				rewards[idx] = f"{reward:.2f}"
+				rewards[idx] = reward
 
 			if reward > best_reward:
 				best_idx = idx
@@ -96,19 +91,6 @@ class Maximiser:
 
 		return self.board.score()
 	
-def interp(n, l):
-	if l == 0 or l[n] is None or l[n] == "":
-		return ""
-	
-	values = list(map(lambda n: float(n), filter(lambda n: n is not None and n != "", list(l.values()))))
-	min_l, max_l = np.min(values), np.max(values)
-	
-	norm = mcolors.Normalize(vmin=min_l, vmax=max_l)
-	cmap = matplotlib.colormaps['coolwarm']
-
-	color = cmap(norm(float(l[n])))
-	return f"{mcolors.to_hex(color)}"
-	
 if __name__ == "__main__":
 	"""
 	Step through a single game and see the predicted scores for each tile's possible placements.
@@ -118,11 +100,9 @@ if __name__ == "__main__":
 	
 	for _ in range(N_TILES):
 		piece = solver.board.draw()
-		idx, score_labels = solver.solve(piece)
+		idx, tile_values = solver.solve(piece)
 		
-		if solver.debug:
-			styles = {n: f"background-color: {interp(n, score_labels)};" for n in range(N_TILES)}
-		solver.board.show(label=score_labels, styles=styles, piece=piece)
+		solver.board.show(tile_values=tile_values, piece=piece)
 
 		solver.board.play(piece, idx)
 		# Wait for confirmation

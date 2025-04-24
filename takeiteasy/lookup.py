@@ -1,23 +1,20 @@
-from copy import deepcopy
 from tqdm import tqdm
 import pickle as pkl
 import os
-import hashlib
 
 from board import Board, N_TILES
-from maximiser import interp
-from mcts import MCTS, RandomNode, ActionNode
+from mcts import MCTS, RandomNode
 
 def create_lookup(lookup=None, expansions=1000, exploration=10, debug=False):
 	print(f"Creating lookup table with expansions={expansions} and explorations={exploration} .")
 
 	board = Board()
-	rootnode = RandomNode(deepcopy(board), tile_idx=-1) if lookup is None else lookup
+	rootnode = RandomNode(board.clone(), tile_idx=-1) if lookup is None else lookup
 	rootnode.visits = expansions
 
 	# Catch early aborts and exit gracefully
 	try:
-		for piece in tqdm(deepcopy(board.pieces)):
+		for piece in tqdm(board.pieces):
 			child = rootnode.get_child(piece, return_none=True)
 
 			# If this child has already been expanded, skip it
@@ -112,7 +109,7 @@ def train(expansions=100, exploration=10, best_move_treshold=1000):
 		print("End training early.")
 		export_lookup(lookup, best_move_treshold=best_move_treshold)
 
-def use(expansions=100, exploration=1, seed=None, filename="./best_moves.pkl"):
+def play(expansions=100, exploration=1, seed=None, filename="./best_moves.pkl"):
 	lookup = load_best_moves(filename=filename)
 
 	# Instantiate solver
@@ -126,24 +123,24 @@ def use(expansions=100, exploration=1, seed=None, filename="./best_moves.pkl"):
 		if (piece, str(board.board)) in lookup:
 			idx = lookup[(piece, str(board.board))]
 			print(f"Used lookup table to determine best move - {idx}.")
-			score_labels = {}
+			tile_values = {}
 		else:
-			idx, score_labels, _ = solver.run(piece)
+			idx, tile_values, _ = solver.run(piece)
 		
-		if solver.debug and score_labels != {}:
-			styles = {n: f"background-color: {interp(n, score_labels)};" for n in range(N_TILES)}
-			solver.board.show(label=score_labels, styles=styles, piece=piece)
-		else:
-			solver.board.show(piece=piece)
+		if solver.debug:
+			solver.board.show(tile_values=tile_values, piece=piece)
 
 		solver.board.play(piece, idx)
+
 		# Wait for confirmation
 		input("Next move?")
-		solver.board.show(piece=piece)
 
 	solver.board.show()
 	print(f"Scored: {solver.board.score()}")
 
 if __name__ == "__main__":
-	#train(expansions=300000, exploration=20, best_move_treshold=150000)
-	use(expansions=40000, exploration=0.1, seed=1745173593146)
+	if True:
+		train(expansions=300000, exploration=20, best_move_treshold=150000)
+	
+	if True:
+		play(expansions=40000, exploration=0.1, seed=1745173593146)

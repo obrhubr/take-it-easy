@@ -1,7 +1,11 @@
-from copy import deepcopy
 import numpy as np
 import random
 import time
+import re
+import numpy as np
+
+import matplotlib
+import matplotlib.colors as mcolors
 
 PIECES = [(1, 2, 3), (1, 2, 4), (1, 2, 8), (1, 6, 3), (1, 6, 4), (1, 6, 8), (1, 7, 3), (1, 7, 4), (1, 7, 8), (5, 2, 3), (5, 2, 4), (5, 2, 8), (5, 6, 3), (5, 6, 4), (5, 6, 8), (5, 7, 3), (5, 7, 4), (5, 7, 8), (9, 2, 3), (9, 2, 4), (9, 2, 8), (9, 6, 3), (9, 6, 4), (9, 6, 8), (9, 7, 3), (9, 7, 4), (9, 7, 8)]
 N_PIECES = len(PIECES)
@@ -42,12 +46,13 @@ class Board:
 			board = [None] * N_TILES
 		self.board = board
 
-		# Select a playing stack
-		self.pieces = deepcopy(PIECES)
-
+		# Initialise with random seed
 		variability = 100000
 		self.seed = int(time.time())*variability + random.randint(0, variability) if seed is None else seed
 		random.seed(self.seed)
+
+		# Shuffle pieces
+		self.pieces = PIECES[:]
 		random.shuffle(self.pieces)
 
 		# Empty tiles
@@ -55,7 +60,11 @@ class Board:
 		self.empty_tiles = [n for n in range(N_TILES)]
 		return
 	
-	def clone(self):
+	def clone(self) -> "Board":
+		"""
+		Return a clone of the board.
+		Can safely be used instead of copying object.
+		"""
 		new_board = Board()
 
 		# Shallow copy only
@@ -83,11 +92,23 @@ class Board:
 				board[idx, 2, 2 if p[2] == 8 else (p[2] - 3)] = 1 # diag_l
 		return board.flatten()
 	
-	def show(self, filename="output.html", label=None, styles=None, piece=[-1, -1, -1]) -> str:
-		import re
+	def show(self, filename="output.html", tile_values=None, piece=[-1, -1, -1]) -> str:
 		"""
 		Export board to a HTML page for easy viewing.
 		"""
+		def interp(n, l):
+			if l == 0 or l[n] is None or l[n] == "":
+				return ""
+			
+			values = list(map(lambda n: float(n), filter(lambda n: n is not None and n != "", list(l.values()))))
+			min_l, max_l = np.min(values), np.max(values)
+			
+			norm = mcolors.Normalize(vmin=min_l, vmax=max_l)
+			cmap = matplotlib.colormaps['coolwarm']
+
+			color = cmap(norm(float(l[n])))
+			return f"{mcolors.to_hex(color)}"
+		
 		def escape_style(match):
 			return match.group().replace("{", "{{").replace("}", "}}")  # Double braces to escape formatting
 
@@ -101,17 +122,18 @@ class Board:
 		# Format the HTML Template
 		escaped_board = list(map(lambda p: ("", "", "") if p is None else p, self.board))
 
-		# Format tile labels
-		if label is None:
-			label = {n: "" for n in range(N_TILES)}
-		if styles is None:
-			styles = {n: "" for n in range(N_TILES)}
+		if tile_values is None:
+			tile_labels, styles = {n: "" for n in range(N_TILES)}, {n: "" for n in range(N_TILES)}
+		else:	
+			# Format tile labels and add color
+			tile_labels = {n: f"{tile_values[n]:.2f}" if n in tile_values else "" for n in range(N_TILES)}
+			styles = {n: f"background-color: {interp(n, tile_labels)};" for n in range(N_TILES)}
 
 		board_html = escaped_html.format(
 			pieces=escaped_board,
 			n_tiles=len(self.filled_tiles),
 			occ=self.occurences(),
-			label=label,
+			label=tile_labels,
 			styles=styles,
 			piece=piece,
 			piece_visibility="block" if piece != [-1, -1, -1] else "none"
@@ -121,10 +143,9 @@ class Board:
 		with open(filename, "w") as file:
 			file.write(board_html)
 	
-	def show_playable(self, filename="play.html", label=None, styles=None, piece=[-1, -1, -1]) -> str:
-		import re
+	def show_playable(self, filename="play.html") -> str:
 		"""
-		Export board to a HTML page that can be played on.
+		Export board to an interactive HTML page.
 		"""
 		# Read HTML template
 		with open("./takeiteasy/play_template.html", "r") as file:
@@ -141,8 +162,12 @@ class Board:
 		# write to file
 		with open(filename, "w") as file:
 			file.write(board_html)
+		return
 
 	def occurences(self):
+		"""
+		Return dictionary mapping each line to the number of tiles which it appears on still left in the game.
+		"""
 		piece_occ = {n: 0 for n in range(1, 10)}
 		for p in self.pieces:
 			if p is not None:
@@ -152,7 +177,7 @@ class Board:
 
 		return piece_occ
 	
-	def score_change(self, idx):
+	def score_change(self, idx: int):
 		"""
 		Return the amount by which the score changed due to placing the tile at tile_idx=idx.
 		"""
@@ -183,9 +208,15 @@ class Board:
 		return score
 	
 	def draw(self) -> tuple[int, int, int]:
+		"""
+		Draw a piece from the stack.
+		"""
 		return self.pieces.pop(0)
 	
 	def play(self, piece: tuple[int, int, int], idx: int):
+		"""
+		Place a piece on the board, at the specified index.
+		"""
 		self.board[idx] = piece
 		self.filled_tiles.add(idx)
 		self.empty_tiles.remove(idx)
