@@ -47,7 +47,8 @@ class Trainer:
 	def __init__(
 			self,
 			batch_size: int = 256, 
-			games: int = 2048, 
+			games: int = 2048,
+			validation_steps: int = 2048,
 			iterations: int = 100, 
 			epochs: int = 8, 
 			lr: float = 3e-4, 
@@ -63,7 +64,7 @@ class Trainer:
 
 		self.batch_size = batch_size
 		self.games = games
-		self.validation_steps = 1024
+		self.validation_steps = validation_steps
 		self.epochs = epochs
 
 		# Network parameters
@@ -151,6 +152,7 @@ class Trainer:
 		self.net.net.eval()
 		for _ in tqdm(range(self.validation_steps), desc="Validating"):
 			board = Board()
+
 			for _ in range(N_TILES):
 				# Piece to be placed this round
 				piece = board.draw()
@@ -166,7 +168,7 @@ class Trainer:
 					if reward > best_reward:
 						best_idx = tile_idx
 						best_reward = reward
-
+				
 				# Place the piece at the position with the highest reward
 				board.play(piece, best_idx)
 			
@@ -201,14 +203,15 @@ class Trainer:
 			for _ in tqdm(range(self.epochs), desc=f"Training {self.iteration}"):
 				for states, target_distributions in dataloader:
 					self.optimizer.zero_grad()
+
 					qd = self.net.net(states)
 					loss = self.quantile_regression_loss(qd, target_distributions)
 
-					# Log loss
-					self.losses += [loss.item()]
-
 					loss.backward()
 					self.optimizer.step()
+
+					# Log loss
+					self.losses += [loss.item()]
 
 			# Every `validation_interval` steps, print the current average score.
 			if self.iteration % validation_interval == 0:
@@ -223,9 +226,10 @@ class Trainer:
 			self.save()
 		return
 	
-	def load(self, filename = "trainer.pkl"):
+	@staticmethod
+	def load(filename = "trainer.pkl"):
 		with open(filename, "rb") as f:
-			self = pickle.load(f)
+			return pickle.load(f)
 	
 	def save(self, filename = "trainer.pkl"):
 		with open(filename, "wb") as f:
@@ -258,11 +262,11 @@ class NNMaximiser(Maximiser):
 		return float(qd.mean(1))
 	
 if __name__ == "__main__":
-	trainer = Trainer()
 
 	# Load the trainer from file and continue
-	continue_training = True
-	if continue_training:
-		trainer.load()
+	if False:
+		trainer = Trainer.load()
+	else:
+		trainer = Trainer()
 
-	trainer.train()
+	trainer.train(validation_interval=3)

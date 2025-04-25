@@ -196,6 +196,9 @@ class Board:
 		Place a piece on the board, at the specified index.
 		Removes the idx from the empty tiles and adds it to the filled tiles.
 		"""
+		if idx < 0:
+			raise Exception(f"Illegal Move: Cannot place piece at {idx=}.")
+		
 		self.board[idx] = piece
 		self.filled_tiles.add(idx)
 		self.empty_tiles.remove(idx)
