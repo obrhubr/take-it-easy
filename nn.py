@@ -46,14 +46,14 @@ class Trainer:
 	"""
 	def __init__(
 			self,
-			batch_size: int = 2048, 
+			batch_size: int = 2048,
 			games: int = 2048,
 			validation_steps: int = 2048,
-			iterations: int = 100, 
-			epochs: int = 8, 
-			lr: float = 3e-4, 
-			lr_decay: float = 0.97, 
-			epsilon: float = 0.5, 
+			iterations: int = 100,
+			epochs: int = 8,
+			lr: float = 3e-4,
+			lr_decay: float = 0.97,
+			epsilon: float = 0.5,
 			epsilon_decay: float = 0.95
 		):
 		self.net = Network()

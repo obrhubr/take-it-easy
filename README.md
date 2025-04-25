@@ -4,7 +4,6 @@
 
 
 
-
 ## Neural Network Bot
 
 [polarbart/TakeItEasyAI](https://github.com/polarbart/TakeItEasyAI)
