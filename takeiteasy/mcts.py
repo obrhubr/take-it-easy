@@ -4,8 +4,6 @@ import random
 
 from board import Board, N_TILES
 
-from maximiser import Maximiser, interp
-
 class ActionNode:
 	def __init__(self, board, piece, parent=None, exploration=1):
 		self.children = {}

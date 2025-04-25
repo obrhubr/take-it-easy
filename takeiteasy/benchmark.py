@@ -11,7 +11,7 @@ from nn import NNMaximiser
 from lookup import load_best_moves
 
 # Specify the solvers to benchmark
-SOLVERS = ["nn", "maximiser" "lookup"]
+SOLVERS = ["nn", "maximiser"]
 
 # Load preprocessed lookup table only if it's needed
 if "lookup" in SOLVERS:
@@ -25,8 +25,6 @@ def select_solver(solver_name: str, board: Board) -> Maximiser:
 		solver = Maximiser(board.clone())
 	elif solver_name == "nn":
 		solver = NNMaximiser(board.clone())
-	elif solver_name == "lookup":
-		solver = Maximiser(board.clone(), lookup=lookup)
 	else:
 		raise Exception(f"Solver \"{solver_name}\" does not exist.")
 	
