@@ -4,20 +4,20 @@ import time
 import pandas as pd
 from concurrent.futures import ProcessPoolExecutor
 
-from board import Board
+from takeiteasy import Board
 
-from maximiser import Maximiser
+from simple import SimpleMaximiser
 from nn import NNMaximiser
 
 # Specify the solvers to benchmark
 SOLVERS = ["nn", "maximiser"]
 
-def select_solver(solver_name: str, board: Board) -> Maximiser:
+def select_solver(solver_name: str, board: Board) -> SimpleMaximiser | NNMaximiser:
 	"""
 	Return the requested solver instantiated with the board.
 	"""
 	if solver_name == "maximiser":
-		solver = Maximiser(board.clone())
+		solver = SimpleMaximiser(board.clone())
 	elif solver_name == "nn":
 		solver = NNMaximiser(board.clone())
 	else:
@@ -63,7 +63,7 @@ def benchmark_parallel(N: int = 1000) -> tuple[list[int], list[float], list[int]
 
 	return scores, times, seeds
 
-def analyse_output(scores: list[int], times: list[float], seeds: list[int], N: int):
+def analyse_output(scores: list[int], times: list[float], seeds: list[int], N: int, export_data: bool = False):
 	"""
 	Pretty print results of benchmark (mean, median, worst, best) and return a csv with the data.
 	"""
