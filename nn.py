@@ -46,9 +46,9 @@ class Trainer:
 	"""
 	def __init__(
 			self,
-			batch_size: int = 2048,
-			games: int = 2048,
-			validation_steps: int = 2048,
+			batch_size: int = 256,
+			games: int = 16384,
+			validation_steps: int = 4096,
 			iterations: int = 100,
 			epochs: int = 8,
 			lr: float = 3e-4,
