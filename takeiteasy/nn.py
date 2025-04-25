@@ -203,8 +203,8 @@ class Trainer:
 		self.net.save()
 
 class NNMaximiser(Maximiser):
-	def __init__(self, board, lookup=None, debug=False, reward_coeff=1, heuristic_coeff=1):
-		super().__init__(board, lookup, debug, reward_coeff, heuristic_coeff)
+	def __init__(self, board, debug=False, reward_coeff=1, heuristic_coeff=1):
+		super().__init__(board, debug, reward_coeff, heuristic_coeff)
 
 		self.net = Network()
 		self.net.load()
@@ -218,6 +218,7 @@ class NNMaximiser(Maximiser):
 		states[0] = torch.from_numpy(self.board.one_hot())
 		with torch.no_grad():
 			qd = self.net.net(states)
+
 		return float(qd.mean(1))
 	
 if __name__ == "__main__":

@@ -8,14 +8,9 @@ from board import Board
 
 from maximiser import Maximiser
 from nn import NNMaximiser
-from lookup import load_best_moves
 
 # Specify the solvers to benchmark
 SOLVERS = ["nn", "maximiser"]
-
-# Load preprocessed lookup table only if it's needed
-if "lookup" in SOLVERS:
-	lookup = load_best_moves()
 
 def select_solver(solver_name: str, board: Board) -> Maximiser:
 	"""
