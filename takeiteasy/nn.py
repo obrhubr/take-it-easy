@@ -236,12 +236,12 @@ class NNMaximiser(Maximiser):
 	"""
 	Implements the neural network powered maximiser. Overrides the heuristic function.
 	"""
-	def __init__(self, board, debug: bool = False, reward_coeff: float = 1, heuristic_coeff: float = 1):
-		super().__init__(board, debug, reward_coeff, heuristic_coeff)
+	def __init__(self, board: Board, debug: bool = False):
+		# Weigh reward and neural network heuristic the same
+		super().__init__(board, debug)
 
 		self.net = Network()
 		self.net.load()
-		return
 
 	def heuristic(self) -> float:
 		"""
