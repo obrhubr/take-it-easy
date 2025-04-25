@@ -7,8 +7,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from torch.nn.functional import smooth_l1_loss
 
-from board import Board, N_TILES
-from maximiser import Maximiser
+from takeiteasy.board import Board, N_TILES
+from takeiteasy.maximiser import Maximiser
 
 class Network:
 	"""
@@ -46,7 +46,7 @@ class Trainer:
 	"""
 	def __init__(
 			self,
-			batch_size: int = 256, 
+			batch_size: int = 2048, 
 			games: int = 2048,
 			validation_steps: int = 2048,
 			iterations: int = 100, 
@@ -201,7 +201,7 @@ class Trainer:
 			dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
 			self.net.net.train()
-			for _ in tqdm(range(self.epochs + 1), desc=f"Training {self.iteration}"):
+			for _ in tqdm(range(self.epochs), desc=f"Training {self.iteration}"):
 				for states, target_distributions in dataloader:
 					self.optimizer.zero_grad()
 
@@ -268,6 +268,6 @@ if __name__ == "__main__":
 	if False:
 		trainer = Trainer.load()
 	else:
-		trainer = Trainer(games=8, batch_size=8, validation_steps=8)
+		trainer = Trainer()
 
-	trainer.train(validation_interval=1)
+	trainer.train(validation_interval=3)

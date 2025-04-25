@@ -1,9 +1,13 @@
-from board import Board, N_TILES
+from .board import Board, N_TILES
 
 class Maximiser:
-	def __init__(self, board: Board, debug: bool = False):
+	def __init__(self, board: Board, rcoeff: float = 1, hcoeff: float = 1, debug: bool = False):
 		self.board = board
 		self.debug = debug
+
+		# Hyperparameters
+		self.rcoeff = rcoeff
+		self.hcoeff = hcoeff
 	
 	def heuristic(self) -> float:
 		return 0 # Not implemented for base class
@@ -22,7 +26,7 @@ class Maximiser:
 
 			self.board.board[idx] = piece
 			
-			reward = self.board.score_change(idx) + self.heuristic()
+			reward = self.board.score_change(idx) * self.rcoeff + self.heuristic() * self.hcoeff
 
 			if self.debug:
 				rewards[idx] = reward
@@ -71,7 +75,3 @@ class Maximiser:
 				input("Next move?")
 
 		print(f"Scored: {self.board.score()}")
-	
-if __name__ == "__main__":
-	maximiser = Maximiser()
-	maximiser.interactive()

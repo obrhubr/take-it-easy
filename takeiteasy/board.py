@@ -204,5 +204,5 @@ class Board:
 		self.empty_tiles.remove(idx)
 	
 if __name__ == "__main__":
-	board = Board(seed=468100)
+	board = Board()
 	board.show()

@@ -1,9 +1,9 @@
-from board import Board, N_TILES, LINES
-from maximiser import Maximiser
+from takeiteasy import Board, LINES
+from takeiteasy import Maximiser
 
 class SimpleMaximiser(Maximiser):
 	def __init__(self, board: Board, debug: bool = False, cautiousness: int = 4):
-		super().__init__(board, debug)
+		super().__init__(board, debug=debug, rcoeff=0.05, hcoeff=0.95)
 
 		# Heuristic parameter
 		self.cautiousness = cautiousness

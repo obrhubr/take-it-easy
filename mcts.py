@@ -2,7 +2,7 @@ from tqdm import tqdm
 import numpy as np
 import random
 
-from board import Board, N_TILES
+from takeiteasy import Board, N_TILES
 
 class ActionNode:
 	"""
