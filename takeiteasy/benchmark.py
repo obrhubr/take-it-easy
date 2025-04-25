@@ -1,7 +1,6 @@
 from tqdm import tqdm
 import numpy as np
 import time
-from copy import deepcopy
 import pandas as pd
 from concurrent.futures import ProcessPoolExecutor
 
@@ -11,25 +10,32 @@ from maximiser import Maximiser
 from nn import NNMaximiser
 from lookup import load_best_moves
 
+# Specify the solvers to benchmark
 SOLVERS = ["nn", "maximiser" "lookup"]
 
 # Load preprocessed lookup table only if it's needed
 if "lookup" in SOLVERS:
 	lookup = load_best_moves()
 
-def select_solver(solver_name, board):
+def select_solver(solver_name: str, board: Board) -> Maximiser:
+	"""
+	Return the requested solver instantiated with the board.
+	"""
 	if solver_name == "maximiser":
-		solver = Maximiser(deepcopy(board))
+		solver = Maximiser(board.clone())
 	elif solver_name == "nn":
-		solver = NNMaximiser(deepcopy(board))
+		solver = NNMaximiser(board.clone())
 	elif solver_name == "lookup":
-		solver = Maximiser(deepcopy(board), lookup=lookup)
+		solver = Maximiser(board.clone(), lookup=lookup)
 	else:
 		raise Exception(f"Solver \"{solver_name}\" does not exist.")
 	
 	return solver
 
-def run_game(seed, solver_idx, solver_name):
+def run_game(seed: int, solver_idx: int, solver_name: str) -> tuple[int, int, int, float]:
+	"""
+	Simulate a single game with the requested solver and return the results.
+	"""
 	board = Board(seed=seed)
 
 	solver = select_solver(solver_name, board)
@@ -41,7 +47,11 @@ def run_game(seed, solver_idx, solver_name):
 
 	return solver_idx, score, board.seed, end - start
 
-def benchmark_parallel(N=1000):
+def benchmark_parallel(N: int = 1000) -> tuple[list[int], list[float], list[int]]:
+	"""
+	Simulate N games in parallel to benchmark the different solvers.
+	Returns a list of scores, time taken to simulate and the seeds of the boards.
+	"""
 	scores, times, seeds = {idx: [] for idx in range(len(SOLVERS))}, {idx: [] for idx in range(len(SOLVERS))}, {idx: [] for idx in range(len(SOLVERS))}
 
 	rand = np.random.randint(0, N*100, size=(N)) + int(time.time())
@@ -60,7 +70,10 @@ def benchmark_parallel(N=1000):
 
 	return scores, times, seeds
 
-def analyse_output(scores, times, seeds, N):
+def analyse_output(scores: list[int], times: list[float], seeds: list[int], N: int):
+	"""
+	Pretty print results of benchmark (mean, median, worst, best) and return a csv with the data.
+	"""
 	data = []
 	for idx, solver in enumerate(SOLVERS):
 		sc, t = scores[idx], times[idx]
