@@ -74,4 +74,6 @@ class Maximiser:
 				# Wait for confirmation
 				input("Next move?")
 
+		self.board.show()
+
 		print(f"Scored: {self.board.score()}")

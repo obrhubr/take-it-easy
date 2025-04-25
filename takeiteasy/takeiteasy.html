@@ -269,7 +269,7 @@
 	</div>
 	<script>
 		let currentPiece = null;
-		let placedCount = 1;
+		let placedCount = 0;
 
 		const nextPieceDiv = document.getElementById("next-piece");
 		const tileCountSpan = document.getElementById("tile-count");
@@ -341,8 +341,11 @@
 				updateNextPieceDisplay([0, 0, 0]);
 				tileCountSpan.textContent = "all";
 				nextPieceDiv.style.display = "none";
+
+				scoreBoard(placedCount == 19);
 				return;
 			};
+
 			currentPiece = pieces.shift();
 			updateNextPieceDisplay(currentPiece);
 
@@ -372,7 +375,7 @@
 			tileCountSpan.textContent = placedCount;
 
 			// Calculate and show score
-			let score = scoreBoard()
+			let score = scoreBoard(placedCount == 19);
 			scoreSpan.textContent = score;
 
 			placed_history.push(currentPiece);
@@ -436,8 +439,17 @@
 			return [v, d1, d2];
 		};
 
-		function scoreBoard() {
+		function scoreBoard(show_scoring=false) {
 			let score = 0;
+
+			if (show_scoring) {
+				for (let i = 0; i < 19; i++) {
+					let piece = document.getElementById(i);
+					piece.childNodes.forEach(child => {
+						child.style = "opacity: 0.1;";
+					});
+				};
+			};
 
 			const checkLines = (groups, orientation) => {
 				for (const line of groups) {
@@ -448,6 +460,14 @@
 
 					if (initial !== undefined && tiles.every(tile => tile !== null && tile[orientation] === initial)) {
 						score += initial * tiles.length;
+
+						if (show_scoring) {
+							line.forEach(tile_idx => {
+								let piece = document.getElementById(tile_idx);
+								let l = piece.querySelector(orientation == 0 ? ".v" : orientation == 1 ? ".d1" : ".d2");
+								l.style = "opacity: 1.0;";
+							});
+						};
 					}
 				}
 			};
@@ -469,6 +489,7 @@
 			});
 		});
 
+		placedCount = 27 - pieces.length - 1;
 		loadNextPiece();
 		addTileLabels({tile_labels}, {tile_styles});
 	</script>
