@@ -11,6 +11,9 @@ from board import Board, N_TILES
 from maximiser import Maximiser
 
 class Network:
+	"""
+	Rewritten version of the network used by polarbart in https://github.com/polarbart/TakeItEasyAI.
+	"""
 	def __init__(self, input_size: int = N_TILES*3*3, hidden_size: int = 2048, output_size: int = 100):
 		super().__init__()
 
@@ -29,15 +32,18 @@ class Network:
 	def forward(self, x: torch.Tensor):
 		return self.net(x)
 	
-	def load(self, filename="model.pkl"):
+	def load(self, filename = "model.pkl"):
 		self.net = torch.load(filename, weights_only=False)
 		return
 	
-	def save(self, filename="model.pkl"):
+	def save(self, filename = "model.pkl"):
 		torch.save(self.net, filename)
 		return
 	
 class Trainer:
+	"""
+	Reimplemented version of the trainer used by polarbart in https://github.com/polarbart/TakeItEasyAI.
+	"""
 	def __init__(
 			self,
 			batch_size: int = 256, 
@@ -76,18 +82,21 @@ class Trainer:
 		# Logging
 		self.losses = []
 		self.scores = []
-		return
 	
 	@torch.no_grad()
-	def create_dataset(self, use_net: bool = True):
+	def create_dataset(self, use_net: bool = True) -> TensorDataset:
 		"""
-		Dynamically create a dataset, using the trained model to predict the distributions.
+		Create the dataset for the current iteration.
+		Is called dynamically as this uses the current best model to produce the data.
+		
+		The network is only used if use_net is True, this is to prevent nonsense results for the first iteration,
+		while the net is uninitialised.
 		"""
 		# Training data: number_of_games * (steps_in_each_game - 1) because first step is not added to training data
 		states = torch.empty((self.games * N_TILES - 1, self.net.input_size), dtype=torch.float)
 		target_distributions = torch.empty((self.games * N_TILES - 1, self.net.output_size), dtype=torch.float)
 		
-		for game_idx in tqdm(range(self.games), desc="Creating dataset"):
+		for game_idx in tqdm(range(self.games), desc=f"Creating dataset {self.iteration=}"):
 			board = Board()
 			for step in range(N_TILES):
 				state = board.one_hot()
@@ -95,25 +104,30 @@ class Trainer:
 
 				next_states = torch.empty((len(board.empty_tiles), self.net.input_size), dtype=torch.float)
 				rewards = torch.zeros((len(board.empty_tiles)))
+
+				# Enumerate over each possible placement and collect the states and rewards
 				for p, tile_idx in enumerate(board.empty_tiles):
 					board.board[tile_idx] = piece
 					next_states[p] = torch.from_numpy(board.one_hot()).float()
 					rewards[p] = torch.from_numpy(np.array([board.score_change(tile_idx)]))
 					board.board[tile_idx] = None
 
-				# If the tile was not the last to be placed and the net is to be used
-				# To calculate the distribution
+				# Don't use the model to predict rewards for the final piece placed
+				# Here the reward is deterministic and can be fully calculated using `score_change`
 				if step < N_TILES - 1 and use_net:
 					qd = self.net.net(next_states)
 				else:
 					qd = torch.zeros((len(board.empty_tiles), self.net.output_size), dtype=torch.float)
 
-				# Get best action to take
+				# Introduce randomness into the seen positions to prevent overfitting
 				if np.random.ranf() > self.epsilon:
+					# The best action is the one maximising expected score
 					best_action = torch.argmax(qd.mean(1)) # Mean over dimension 1 (for each of the games)
 				else:
 					best_action = np.random.randint(len(board.empty_tiles))
 
+				# An expected score for an empty board doesn't make sense
+				# The model will only be called once a piece has been placed
 				if step > 0:
 					# Add (state, distribution after playing best move) to training set
 					idx = game_idx * (N_TILES - 1) + step - 1
@@ -128,7 +142,10 @@ class Trainer:
 		return TensorDataset(states, target_distributions)
 
 	@torch.no_grad()
-	def validate(self):
+	def validate(self) -> float:
+		"""
+		Return the average score of the current net over `validation_steps` games.
+		"""
 		scores = []
 
 		self.net.net.eval()
@@ -158,6 +175,9 @@ class Trainer:
 		return np.mean(scores)
 	
 	def quantile_regression_loss(self, qd: torch.Tensor, tqd: torch.Tensor):
+		"""
+		Custom loss function for Distributional Quantile Regression models.
+		"""
 		mask = (tqd != -1)
 		weight = torch.abs((self.tau - (tqd < qd.detach()).float()))
 
@@ -165,12 +185,20 @@ class Trainer:
 		return (weight * mask * smooth_l1_loss(qd, tqd, reduction='none')).mean()
 
 	def train(self, validation_interval: int = 3):
+		"""
+		Train the model.
+		For each iteration, generate  `self.games` games with `create_dataset`,
+		then train the model on them for `self.epochs`.
+
+		In the first iteration, don't use the net to create training data (raw rewards only)
+		as the outputs will not make sense yet. This would disturb training.
+		"""
 		while self.iteration < self.iterations:
 			dataset = self.create_dataset(use_net=self.iteration > 1)
 			dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
 			self.net.net.train()
-			for _ in tqdm(range(self.epochs), desc=f'Training {self.iteration}'):
+			for _ in tqdm(range(self.epochs), desc=f"Training {self.iteration}"):
 				for states, target_distributions in dataloader:
 					self.optimizer.zero_grad()
 					qd = self.net.net(states)
@@ -182,6 +210,7 @@ class Trainer:
 					loss.backward()
 					self.optimizer.step()
 
+			# Every `validation_interval` steps, print the current average score.
 			if self.iteration % validation_interval == 0:
 				validation_score = self.validate()
 				print(f"Validating model {self.iteration=}: {validation_score:.2f}")
@@ -190,27 +219,34 @@ class Trainer:
 			self.epsilon *= self.epsilon_decay
 			self.iteration += 1
 
+			# Save model and trainer after every step
 			self.save()
 		return
 	
-	def load(self, filename="trainer.pkl"):
+	def load(self, filename = "trainer.pkl"):
 		with open(filename, "rb") as f:
 			self = pickle.load(f)
 	
-	def save(self, filename="trainer.pkl"):
+	def save(self, filename = "trainer.pkl"):
 		with open(filename, "wb") as f:
 			pickle.dump(self, f)
 		self.net.save()
 
 class NNMaximiser(Maximiser):
-	def __init__(self, board, debug=False, reward_coeff=1, heuristic_coeff=1):
+	"""
+	Implements the neural network powered maximiser. Overrides the heuristic function.
+	"""
+	def __init__(self, board, debug: bool = False, reward_coeff: float = 1, heuristic_coeff: float = 1):
 		super().__init__(board, debug, reward_coeff, heuristic_coeff)
 
 		self.net = Network()
 		self.net.load()
 		return
 
-	def heuristic(self):
+	def heuristic(self) -> float:
+		"""
+		Use the nn to get an expected score for the current board.
+		"""
 		if len(self.board.filled_tiles) == N_TILES - 1:
 			return 0
 		
@@ -222,9 +258,10 @@ class NNMaximiser(Maximiser):
 		return float(qd.mean(1))
 	
 if __name__ == "__main__":
-	continue_training = True
-
 	trainer = Trainer()
+
+	# Load the trainer from file and continue
+	continue_training = True
 	if continue_training:
 		trainer.load()
 
