@@ -79,13 +79,15 @@ def analyse_output(scores: list[int], times: list[float], seeds: list[int], N: i
 		print(f"Worst: {np.min(sc)} - Best: {np.max(sc)}")
 		print()
 
-		for score, t, seed in zip(scores[idx], times[idx], seeds[idx]):
-			data += [{"solver": solver, "scores": score, "times": t, "seeds": seed }]
+		if export_data:
+			for score, t, seed in zip(scores[idx], times[idx], seeds[idx]):
+				data += [{"solver": solver, "scores": score, "times": t, "seeds": seed }]
 
-	df = pd.DataFrame(data)
-	df.to_csv("data.csv")
+	if export_data:
+		df = pd.DataFrame(data)
+		df.to_csv("data.csv")
 	
 if __name__ == "__main__":
-	N = 5000
+	N = 100
 	scores, times, seeds = benchmark_parallel(N)
 	analyse_output(scores, times, seeds, N)
