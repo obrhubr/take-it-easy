@@ -172,7 +172,9 @@ class Trainer:
 				# Place the piece at the position with the highest reward
 				board.play(piece, best_idx)
 			
-			scores += [board.score()]
+			score = board.score()
+			scores += [score]
+			self.scores += [score]
 		
 		return np.mean(scores)
 	
@@ -270,4 +272,4 @@ if __name__ == "__main__":
 	else:
 		trainer = Trainer()
 
-	trainer.train(validation_interval=3)
+	trainer.train(validation_interval=8)
