@@ -1,11 +1,11 @@
 __pycache__
 
+# Interactive board visualisation output
 output.html
 
-lookup.pkl
-best_moves.pkl
+# NN Trainer output
+model.pkl
+trainer.pkl
 
 data.csv
 analysis.ipynb
-
-mcts-random/**

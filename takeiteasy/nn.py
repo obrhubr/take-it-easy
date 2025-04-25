@@ -261,7 +261,7 @@ if __name__ == "__main__":
 	trainer = Trainer()
 
 	# Load the trainer from file and continue
-	continue_training = True
+	continue_training = False
 	if continue_training:
 		trainer.load()
 
