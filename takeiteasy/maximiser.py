@@ -1,4 +1,4 @@
-from board import Board, N_TILES, straights, diags_l, diags_r
+from board import Board, N_TILES, LINES
 
 class Maximiser:
 	def __init__(self, board, lookup=None, debug=False, reward_coeff=0, heuristic_coeff=1):
@@ -16,11 +16,7 @@ class Maximiser:
 		pieces_n = self.board.occurences()
 
 		score = 0
-		for rule, orientation in [
-			(straights, 0),
-			(diags_r, 1),
-			(diags_l, 2)
-		]:
+		for orientation, rule in enumerate(LINES):
 			for line_indeces in rule:
 				line = [self.board.board[idx] for idx in line_indeces]
 
