@@ -1,18 +1,19 @@
 from board import Board, N_TILES, LINES
 
 class Maximiser:
-	def __init__(self, board, lookup=None, debug=False, reward_coeff=0, heuristic_coeff=1):
+	def __init__(self, board: Board, debug: bool = False, reward_coeff: float = 0, heuristic_coeff: float = 1):
 		self.board = board
 		self.debug = debug
-		self.lookup = lookup
 
-		# Hyperparameters
+		# Hyperparameters to decide scoring weights
 		self.cautiousness = 4
 		self.reward_coeff = reward_coeff
 		self.heuristic_coeff = heuristic_coeff
-		return
 	
-	def heuristic(self) -> int:
+	def heuristic(self) -> float:
+		"""
+		Return an expected score for the current board.
+		"""
 		pieces_n = self.board.occurences()
 
 		score = 0
@@ -39,9 +40,10 @@ class Maximiser:
 		
 		return score
 	
-	def solve(self, piece) -> int:
+	def best_move(self, piece: tuple[int, int, int]) -> tuple[int, list[int]]:
 		"""
-		Return board with tile placed optimally and the idx at which the piece was placed.
+		Return the tile_idx of the best move and the expected rewards for every tile.
+		Uses the reward (score change due to placing tile) and heuristic to determine the best move.
 		"""
 		best_reward, best_idx = -1, -1
 		rewards = {}
@@ -72,17 +74,11 @@ class Maximiser:
 	def play_game(self) -> int:
 		"""
 		Play a single game and return the score.
+		Determines the best move at every turn using `Maximiser.best_move`.
 		"""
 		for _ in range(N_TILES - len(self.board.filled_tiles)):
 			piece = self.board.draw()
-
-			# Use the lookup table
-			key = (piece, str(self.board.board))
-			if self.lookup is not None and key in self.lookup:
-				idx = self.lookup[key]
-			else:
-				idx, _ = self.solve(piece)
-			
+			idx, _ = self.best_move(piece)
 			self.board.play(piece, idx)
 
 		return self.board.score()
@@ -96,9 +92,9 @@ if __name__ == "__main__":
 	
 	for _ in range(N_TILES):
 		piece = solver.board.draw()
-		idx, tile_values = solver.solve(piece)
+		idx, tile_values = solver.best_move(piece)
 		
-		solver.board.show_playable(tile_values=tile_values, piece=piece)
+		solver.board.show(tile_values=tile_values, piece=piece)
 
 		solver.board.play(piece, idx)
 		# Wait for confirmation
