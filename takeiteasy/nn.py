@@ -94,8 +94,8 @@ class Trainer:
 		while the net is uninitialised.
 		"""
 		# Training data: number_of_games * (steps_in_each_game - 1) because first step is not added to training data
-		states = torch.empty((self.games * N_TILES - 1, self.net.input_size), dtype=torch.float)
-		target_distributions = torch.empty((self.games * N_TILES - 1, self.net.output_size), dtype=torch.float)
+		states = torch.empty((self.games * (N_TILES - 1), self.net.input_size), dtype=torch.float)
+		target_distributions = torch.empty((self.games *( N_TILES - 1), self.net.output_size), dtype=torch.float)
 		
 		for game_idx in tqdm(range(self.games), desc=f"Creating dataset {self.iteration=}"):
 			board = Board()
@@ -103,7 +103,7 @@ class Trainer:
 				state = board.one_hot()
 				piece = board.draw()
 
-				next_states = torch.empty((len(board.empty_tiles), self.net.input_size), dtype=torch.float)
+				next_states = torch.zeros((len(board.empty_tiles), self.net.input_size), dtype=torch.float)
 				rewards = torch.zeros((len(board.empty_tiles)))
 
 				# Enumerate over each possible placement and collect the states and rewards
@@ -131,9 +131,9 @@ class Trainer:
 				# The model will only be called once a piece has been placed
 				if step > 0:
 					# Add (state, distribution after playing best move) to training set
-					idx = game_idx * (N_TILES - 1) + step - 1
-					states[idx] = torch.from_numpy(state)
-					target_distributions[idx] = rewards[best_action] + qd[best_action]
+					data_idx = game_idx * (N_TILES - 1) + step - 1
+					states[data_idx] = torch.from_numpy(state)
+					target_distributions[data_idx] = rewards[best_action] + qd[best_action]
 
 				# Play the best action
 				board.play(piece, board.empty_tiles[best_action])
@@ -184,7 +184,8 @@ class Trainer:
 		weight = torch.abs((self.tau - (tqd < qd.detach()).float()))
 
 		qd, tqd = torch.broadcast_tensors(qd, tqd)
-		return (weight * mask * smooth_l1_loss(qd, tqd, reduction='none')).mean()
+		loss = (weight * mask * smooth_l1_loss(qd, tqd, reduction='none')).mean()
+		return loss
 
 	def train(self, validation_interval: int = 3):
 		"""
@@ -200,7 +201,7 @@ class Trainer:
 			dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
 			self.net.net.train()
-			for _ in tqdm(range(self.epochs), desc=f"Training {self.iteration}"):
+			for _ in tqdm(range(self.epochs + 1), desc=f"Training {self.iteration}"):
 				for states, target_distributions in dataloader:
 					self.optimizer.zero_grad()
 
@@ -267,6 +268,6 @@ if __name__ == "__main__":
 	if False:
 		trainer = Trainer.load()
 	else:
-		trainer = Trainer()
+		trainer = Trainer(games=8, batch_size=8, validation_steps=8)
 
-	trainer.train(validation_interval=3)
+	trainer.train(validation_interval=1)

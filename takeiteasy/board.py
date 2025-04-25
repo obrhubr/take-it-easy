@@ -89,7 +89,7 @@ class Board:
 				p = self.board[idx]
 				board[idx, 0, (p[0] - 1) // 4] = True # straight
 				board[idx, 1, 0 if p[1] == 2 else (p[1] - 5)] = True # diag_r
-				board[idx, 2, 2 if p[2] == 8 else (p[2] - 3)] = 1 # diag_l
+				board[idx, 2, 2 if p[2] == 8 else (p[2] - 3)] = True # diag_l
 		return board.flatten()
 	
 	def show(self, filename="output.html", tile_values=None, piece=None):
