@@ -94,13 +94,13 @@ class Trainer:
 		while the net is uninitialised.
 		"""
 		# Training data: number_of_games * (steps_in_each_game - 1) because first step is not added to training data
-		states = torch.empty((self.games * (N_TILES - 1), self.net.input_size), dtype=torch.float)
-		target_distributions = torch.empty((self.games *( N_TILES - 1), self.net.output_size), dtype=torch.float)
+		states = torch.zeros((self.games * (N_TILES - 1), self.net.input_size), dtype=torch.float)
+		target_distributions = torch.zeros((self.games * ( N_TILES - 1), self.net.output_size), dtype=torch.float)
 		
 		for game_idx in tqdm(range(self.games), desc=f"Creating dataset {self.iteration=}"):
 			board = Board()
 			for step in range(N_TILES):
-				state = board.one_hot()
+				state = torch.from_numpy(board.one_hot())
 				piece = board.draw()
 
 				next_states = torch.zeros((len(board.empty_tiles), self.net.input_size), dtype=torch.float)
@@ -110,7 +110,7 @@ class Trainer:
 				for p, tile_idx in enumerate(board.empty_tiles):
 					board.board[tile_idx] = piece
 					next_states[p] = torch.from_numpy(board.one_hot()).float()
-					rewards[p] = torch.from_numpy(np.array([board.score_change(tile_idx)]))
+					rewards[p] = torch.tensor(board.score_change(tile_idx))
 					board.board[tile_idx] = None
 
 				# Don't use the model to predict rewards for the final piece placed
@@ -132,13 +132,17 @@ class Trainer:
 				if step > 0:
 					# Add (state, distribution after playing best move) to training set
 					data_idx = game_idx * (N_TILES - 1) + step - 1
-					states[data_idx] = torch.from_numpy(state)
+					states[data_idx] = state
 					target_distributions[data_idx] = rewards[best_action] + qd[best_action]
 
 				# Play the best action
 				board.play(piece, board.empty_tiles[best_action])
 
 			self.scores += [board.score()]
+
+		# Check for errors in training data
+		if torch.isnan(states).any() or torch.isnan(target_distributions).any():
+			raise Exception(f"Dataset generation {self.iteration=}: NaN in training data.")
 
 		return TensorDataset(states, target_distributions)
 
@@ -262,14 +266,18 @@ class NNMaximiser(Maximiser):
 		with torch.no_grad():
 			qd = self.net.net(states)
 
-		return float(qd.mean(1))
+		return float(qd.mean(1)) + self.board.score()
 	
 if __name__ == "__main__":
 
 	# Load the trainer from file and continue
 	if False:
 		trainer = Trainer.load()
-	else:
-		trainer = Trainer()
 
-	trainer.train(validation_interval=8)
+		""" trainer.batch_size = 1
+		trainer.games = 4
+		trainer.validation_steps = 4 """
+	else:
+		trainer = Trainer(games=4, batch_size=4, validation_steps=4)
+
+	trainer.train(validation_interval=1)
