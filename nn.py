@@ -273,11 +273,7 @@ if __name__ == "__main__":
 	# Load the trainer from file and continue
 	if False:
 		trainer = Trainer.load()
-
-		""" trainer.batch_size = 1
-		trainer.games = 4
-		trainer.validation_steps = 4 """
 	else:
-		trainer = Trainer(games=4, batch_size=4, validation_steps=4)
+		trainer = Trainer()
 
-	trainer.train(validation_interval=1)
+	trainer.train(validation_interval=5)
