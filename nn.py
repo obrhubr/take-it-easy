@@ -97,16 +97,20 @@ class Trainer:
 		states = torch.zeros((self.games * (N_TILES - 1), self.net.input_size), dtype=torch.float)
 		# Initialise with -1s and mask them out during loss calculation
 		target_distributions = -torch.ones((self.games * ( N_TILES - 1), self.net.output_size), dtype=torch.float)
+		# How many positions were evaluated to find the best_action
+		n_samples = torch.empty((self.games * ( N_TILES - 1)), dtype=torch.int8)
 		
-		self.net.eval()
+		self.net.net.eval()
 		for game_idx in tqdm(range(self.games), desc=f"Creating dataset {self.iteration=}"):
 			board = Board()
 			for step in range(N_TILES):
 				state = torch.from_numpy(board.one_hot())
 				piece = board.draw()
 
-				next_states = torch.zeros((len(board.empty_tiles), self.net.input_size), dtype=torch.float)
-				rewards = torch.zeros((len(board.empty_tiles)), dtype=torch.float)
+				empty_tiles_len = len(board.empty_tiles)
+
+				next_states = torch.zeros((empty_tiles_len, self.net.input_size), dtype=torch.float)
+				rewards = torch.zeros((empty_tiles_len), dtype=torch.float)
 
 				# Enumerate over each possible placement and collect the states and rewards
 				for p, tile_idx in enumerate(board.empty_tiles):
@@ -136,13 +140,14 @@ class Trainer:
 					data_idx = game_idx * (N_TILES - 1) + step - 1
 					states[data_idx] = state
 					target_distributions[data_idx] = rewards[best_action] + qd[best_action]
+					n_samples[data_idx] = empty_tiles_len
 
 				# Play the best action
 				board.play(piece, board.empty_tiles[best_action])
 
 			self.scores += [board.score()]
 
-		return TensorDataset(states, target_distributions)
+		return TensorDataset(states, target_distributions, n_samples)
 
 	@torch.no_grad()
 	def validate(self) -> float:
@@ -180,12 +185,12 @@ class Trainer:
 		
 		return np.mean(scores)
 	
-	def quantile_regression_loss(self, qd: torch.Tensor, tqd: torch.Tensor):
+	def quantile_regression_loss(self, qd: torch.Tensor, tqd: torch.Tensor, n_samples: int):
 		"""
 		Custom loss function for Distributional Quantile Regression models.
 		"""
 		mask = (tqd != -1)
-		weight = torch.abs((self.tau - (tqd < qd.detach()).float()))
+		weight = torch.abs((self.tau - (tqd < qd.detach()).float())) / n_samples
 
 		qd, tqd = torch.broadcast_tensors(qd, tqd)
 		loss = (weight * mask * smooth_l1_loss(qd, tqd, reduction='none'))
@@ -206,11 +211,11 @@ class Trainer:
 
 			self.net.net.train()
 			for _ in tqdm(range(self.epochs), desc=f"Training {self.iteration}"):
-				for states, target_distributions in dataloader:
+				for states, target_distributions, n_samples in dataloader:
 					self.optimizer.zero_grad()
 
 					qd = self.net.net(states)
-					loss = self.quantile_regression_loss(qd, target_distributions)
+					loss = self.quantile_regression_loss(qd, target_distributions, n_samples)
 
 					loss.backward()
 					self.optimizer.step()
@@ -272,6 +277,6 @@ if __name__ == "__main__":
 	if False:
 		trainer = Trainer.load()
 	else:
-		trainer = Trainer()
+		trainer = Trainer(games=2048, validation_steps=2048, batch_size=128)
 
-	trainer.train(validation_interval=5)
+	trainer.train(validation_interval=1)
