@@ -83,7 +83,7 @@ class Board:
 
 		Source: https://github.com/polarbart/TakeItEasyAI/blob/master/takeiteasy.py.
 		"""
-		board = np.zeros((N_TILES, 3, 3), dtype=np.float16)
+		board = np.zeros((N_TILES, 3, 3), dtype=np.float32)
 		for idx, piece in enumerate(self.board):
 			if piece is not None:
 				p = self.board[idx]

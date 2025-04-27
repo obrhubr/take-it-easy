@@ -33,7 +33,7 @@ class Network:
 		return self.net(x)
 	
 	def load(self, filename = "model.pkl"):
-		self.net = torch.load(filename, weights_only=False)
+		self.net.load_state_dict(torch.load(filename))
 		return
 	
 	def save(self, filename = "model.pkl"):
@@ -95,8 +95,10 @@ class Trainer:
 		"""
 		# Training data: number_of_games * (steps_in_each_game - 1) because first step is not added to training data
 		states = torch.zeros((self.games * (N_TILES - 1), self.net.input_size), dtype=torch.float)
-		target_distributions = torch.zeros((self.games * ( N_TILES - 1), self.net.output_size), dtype=torch.float)
+		# Initialise with -1s and mask them out during loss calculation
+		target_distributions = -torch.ones((self.games * ( N_TILES - 1), self.net.output_size), dtype=torch.float)
 		
+		self.net.eval()
 		for game_idx in tqdm(range(self.games), desc=f"Creating dataset {self.iteration=}"):
 			board = Board()
 			for step in range(N_TILES):
@@ -104,7 +106,7 @@ class Trainer:
 				piece = board.draw()
 
 				next_states = torch.zeros((len(board.empty_tiles), self.net.input_size), dtype=torch.float)
-				rewards = torch.zeros((len(board.empty_tiles)))
+				rewards = torch.zeros((len(board.empty_tiles)), dtype=torch.float)
 
 				# Enumerate over each possible placement and collect the states and rewards
 				for p, tile_idx in enumerate(board.empty_tiles):
@@ -186,8 +188,8 @@ class Trainer:
 		weight = torch.abs((self.tau - (tqd < qd.detach()).float()))
 
 		qd, tqd = torch.broadcast_tensors(qd, tqd)
-		loss = (weight * mask * smooth_l1_loss(qd, tqd, reduction='none')).mean()
-		return loss
+		loss = (weight * mask * smooth_l1_loss(qd, tqd, reduction='none'))
+		return loss.sum() / self.batch_size
 
 	def train(self, validation_interval: int = 3):
 		"""
