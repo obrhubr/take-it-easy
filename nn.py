@@ -161,7 +161,7 @@ class Trainer:
 			scores = []
 			boards = [Board() for _ in range(size)]
 
-			for _ in range(N_TILES):
+			for step in range(N_TILES):
 				all_states = []
 				all_rewards = []
 
@@ -182,9 +182,15 @@ class Trainer:
 						all_rewards += [board.score_change(tile_idx)]
 						board.board[tile_idx] = None
 
+				# Only use net before last step
 				state_batch = torch.stack(all_states)
+				if step < N_TILES - 1:
+					qd_means = self.net.net(state_batch).mean(1)
+				else:
+					qd_means = torch.zeros((len(all_rewards)), dtype=torch.float)
+
 				rewards_batch = torch.tensor(all_rewards)
-				rewards = self.net.net(state_batch).mean(1) + rewards_batch
+				rewards = qd_means + rewards_batch
 					
 				best_indices = []
 				start_idx = 0
@@ -304,6 +310,6 @@ if __name__ == "__main__":
 	if False:
 		trainer = Trainer.load()
 	else:
-		trainer = Trainer(games=1, validation_steps=2048, game_batch_size=1024, batch_size=1)
+		trainer = Trainer(games=1, validation_steps=128, game_batch_size=64, batch_size=1)
 
 	trainer.train(validation_interval=1)
