@@ -24,7 +24,7 @@ The perfect score is exactly `307`, there exist 16 such combinations.
 
 Due to the large number of possible combinations of drawn pieces, different drawing orders and placements, the game is not fully solvable.
 
-$$ \frac{27!}{(27 - 19)!} \cdot 19! \approx 3.2 × 10^{40} \quad \text{possible games} $$
+$$ \binom{27}{19} \cdot 19! \approx 2.7 × 10^{23} \quad \text{possible games} $$
 
 ## Usage
 
