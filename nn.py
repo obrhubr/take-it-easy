@@ -33,7 +33,7 @@ class Network:
 		return self.net(x)
 	
 	def load(self, filename = "model.pkl"):
-		self.net.load_state_dict(torch.load(filename))
+		self.net = torch.load(filename, weights_only=False)
 		return
 	
 	def save(self, filename = "model.pkl"):
@@ -160,7 +160,7 @@ class Trainer:
 		for _ in tqdm(range(self.validation_steps), desc="Validating"):
 			board = Board()
 
-			for _ in range(N_TILES):
+			for step in range(N_TILES):
 				# Piece to be placed this round
 				piece = board.draw()
 
@@ -169,8 +169,14 @@ class Trainer:
 				for tile_idx in board.empty_tiles:
 					board.board[tile_idx] = piece
 					state = torch.from_numpy(board.one_hot())
-					reward = board.score_change(tile_idx) + self.net.net(state).mean()
 					board.board[tile_idx] = None
+					
+					# Only use the net before the last step
+					if step < N_TILES - 1:
+						qd_mean = self.net.net(state).mean()
+					else:
+						qd_mean = 0
+					reward = board.score_change(tile_idx) + qd_mean
 
 					if reward > best_reward:
 						best_idx = tile_idx
@@ -261,22 +267,32 @@ class NNMaximiser(Maximiser):
 		"""
 		Use the nn to get an expected score for the current board.
 		"""
-		if len(self.board.filled_tiles) == N_TILES - 1:
+		if len(self.board.filled_tiles) >= N_TILES - 2:
 			return 0
 		
-		states = torch.empty((1, N_TILES*3*3), dtype=torch.float)
-		states[0] = torch.from_numpy(self.board.one_hot())
 		with torch.no_grad():
-			qd = self.net.net(states)
+			qd = self.net.net(torch.from_numpy(self.board.one_hot()).unsqueeze(0))
+
+		if qd.mean(1) < 0:
+			print("<0")
 
 		return float(qd.mean(1)) + self.board.score()
 	
 if __name__ == "__main__":
 
 	# Load the trainer from file and continue
-	if False:
+	""" if False:
 		trainer = Trainer.load()
 	else:
 		trainer = Trainer(games=2048, validation_steps=2048, batch_size=256)
 
-	trainer.train(validation_interval=1)
+	trainer.train(validation_interval=1) """
+
+	maximiser = NNMaximiser(Board())
+
+	scores = []
+	for _ in tqdm(range(100)):
+		scores += [maximiser.play_game()]
+		maximiser.board = Board()
+
+	print(np.array(scores).mean())
