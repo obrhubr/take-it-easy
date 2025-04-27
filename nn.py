@@ -109,7 +109,7 @@ class Trainer:
 				# Enumerate over each possible placement and collect the states and rewards
 				for p, tile_idx in enumerate(board.empty_tiles):
 					board.board[tile_idx] = piece
-					next_states[p] = torch.from_numpy(board.one_hot()).float()
+					next_states[p] = torch.from_numpy(board.one_hot())
 					rewards[p] = torch.tensor(board.score_change(tile_idx))
 					board.board[tile_idx] = None
 
@@ -140,10 +140,6 @@ class Trainer:
 
 			self.scores += [board.score()]
 
-		# Check for errors in training data
-		if torch.isnan(states).any() or torch.isnan(target_distributions).any():
-			raise Exception(f"Dataset generation {self.iteration=}: NaN in training data.")
-
 		return TensorDataset(states, target_distributions)
 
 	@torch.no_grad()
@@ -165,7 +161,7 @@ class Trainer:
 				best_reward, best_idx = -1, -1
 				for tile_idx in board.empty_tiles:
 					board.board[tile_idx] = piece
-					state = torch.from_numpy(board.one_hot()).float()
+					state = torch.from_numpy(board.one_hot())
 					reward = board.score_change(tile_idx) + self.net.net(state).mean()
 					board.board[tile_idx] = None
 

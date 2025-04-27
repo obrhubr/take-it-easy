@@ -83,13 +83,13 @@ class Board:
 
 		Source: https://github.com/polarbart/TakeItEasyAI/blob/master/takeiteasy.py.
 		"""
-		board = np.zeros((N_TILES, 3, 3), dtype=np.bool)
+		board = np.zeros((N_TILES, 3, 3), dtype=np.float16)
 		for idx, piece in enumerate(self.board):
 			if piece is not None:
 				p = self.board[idx]
-				board[idx, 0, (p[0] - 1) // 4] = True # straight
-				board[idx, 1, 0 if p[1] == 2 else (p[1] - 5)] = True # diag_r
-				board[idx, 2, 2 if p[2] == 8 else (p[2] - 3)] = True # diag_l
+				board[idx, 0, (p[0] - 1) // 4] = 1 # straight
+				board[idx, 1, 0 if p[1] == 2 else (p[1] - 5)] = 1 # diag_r
+				board[idx, 2, 2 if p[2] == 8 else (p[2] - 3)] = 1 # diag_l
 		return board.flatten()
 	
 	def show(self, filename="output.html", tile_values=None, piece=None):
