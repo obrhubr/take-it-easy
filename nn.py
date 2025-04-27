@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from torch.nn.functional import smooth_l1_loss
+import torch.multiprocessing as mp
 
 from takeiteasy.board import Board, N_TILES
 from takeiteasy.maximiser import Maximiser
@@ -33,7 +34,7 @@ class Network:
 		return self.net(x)
 	
 	def load(self, filename = "model.pkl"):
-		self.net.load_state_dict(torch.load(filename))
+		self.net = torch.load(filename, weights_only=False)
 		return
 	
 	def save(self, filename = "model.pkl"):
@@ -48,6 +49,7 @@ class Trainer:
 			self,
 			batch_size: int = 256,
 			games: int = 16384,
+			game_batch_size: int = 1024,
 			validation_steps: int = 4096,
 			iterations: int = 100,
 			epochs: int = 8,
@@ -64,6 +66,7 @@ class Trainer:
 
 		self.batch_size = batch_size
 		self.games = games
+		self.game_batch_size = game_batch_size
 		self.validation_steps = validation_steps
 		self.epochs = epochs
 
@@ -154,35 +157,59 @@ class Trainer:
 		"""
 		Return the average score of the current net over `validation_steps` games.
 		"""
-		scores = []
-
-		self.net.net.eval()
-		for _ in tqdm(range(self.validation_steps), desc="Validating"):
-			board = Board()
+		def validate_batch(size: int):
+			scores = []
+			boards = [Board() for _ in range(size)]
 
 			for _ in range(N_TILES):
-				# Piece to be placed this round
-				piece = board.draw()
+				all_states = []
+				all_rewards = []
 
-				# Check all positions
-				best_reward, best_idx = -1, -1
-				for tile_idx in board.empty_tiles:
-					board.board[tile_idx] = piece
-					state = torch.from_numpy(board.one_hot())
-					reward = board.score_change(tile_idx) + self.net.net(state).mean()
-					board.board[tile_idx] = None
+				all_empty_tiles = []
+				all_pieces = []
 
-					if reward > best_reward:
-						best_idx = tile_idx
-						best_reward = reward
-				
-				# Place the piece at the position with the highest reward
-				board.play(piece, best_idx)
-			
-			score = board.score()
-			scores += [score]
-			self.scores += [score]
-		
+				for game_idx, board in enumerate(boards):
+					# Piece to be placed this round
+					piece = board.draw()
+					all_pieces += [piece]
+
+					empty_tiles = board.empty_tiles
+					all_empty_tiles.append(empty_tiles)
+
+					for tile_idx in empty_tiles:
+						board.board[tile_idx] = piece
+						all_states += [torch.from_numpy(board.one_hot())]
+						all_rewards += [board.score_change(tile_idx)]
+						board.board[tile_idx] = None
+
+				state_batch = torch.stack(all_states)
+				rewards_batch = torch.tensor(all_rewards)
+				rewards = self.net.net(state_batch).mean(1) + rewards_batch
+					
+				best_indices = []
+				start_idx = 0
+				for empty_tiles in all_empty_tiles:
+					game_rewards = rewards[start_idx:start_idx + len(empty_tiles)]
+
+					best_idx = empty_tiles[torch.argmax(game_rewards).item()]
+					best_indices.append(best_idx)
+
+					start_idx += len(empty_tiles)
+					
+				for game_idx, board, piece in zip(range(self.validation_steps), boards, all_pieces):
+					board.play(piece, best_indices[game_idx])
+
+			for board in boards:
+				scores.append(board.score())
+
+			return scores
+
+		self.net.net.eval()
+
+		scores = []
+		for _ in tqdm(range(self.validation_steps // self.game_batch_size), "Validating"):
+			scores += validate_batch(self.game_batch_size)
+
 		return np.mean(scores)
 	
 	def quantile_regression_loss(self, qd: torch.Tensor, tqd: torch.Tensor, n_samples: int):
@@ -277,6 +304,6 @@ if __name__ == "__main__":
 	if False:
 		trainer = Trainer.load()
 	else:
-		trainer = Trainer(games=2048, validation_steps=2048, batch_size=256)
+		trainer = Trainer(games=1, validation_steps=2048, game_batch_size=1024, batch_size=1)
 
 	trainer.train(validation_interval=1)
