@@ -281,18 +281,9 @@ class NNMaximiser(Maximiser):
 if __name__ == "__main__":
 
 	# Load the trainer from file and continue
-	""" if False:
+	if True:
 		trainer = Trainer.load()
 	else:
-		trainer = Trainer(games=2048, validation_steps=2048, batch_size=256)
+		trainer = Trainer()
 
-	trainer.train(validation_interval=1) """
-
-	maximiser = NNMaximiser(Board())
-
-	scores = []
-	for _ in tqdm(range(100)):
-		scores += [maximiser.play_game()]
-		maximiser.board = Board()
-
-	print(np.array(scores).mean())
+	trainer.train(validation_interval=1)
