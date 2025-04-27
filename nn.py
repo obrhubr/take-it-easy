@@ -190,7 +190,7 @@ class Trainer:
 		Custom loss function for Distributional Quantile Regression models.
 		"""
 		mask = (tqd != -1)
-		weight = torch.abs((self.tau - (tqd < qd.detach()).float())) / n_samples
+		weight = torch.abs((self.tau - (tqd < qd.detach()).float())) / n_samples.unsqueeze(1)
 
 		qd, tqd = torch.broadcast_tensors(qd, tqd)
 		loss = (weight * mask * smooth_l1_loss(qd, tqd, reduction='none'))
@@ -277,6 +277,6 @@ if __name__ == "__main__":
 	if False:
 		trainer = Trainer.load()
 	else:
-		trainer = Trainer(games=2048, validation_steps=2048, batch_size=128)
+		trainer = Trainer(games=2048, validation_steps=2048, batch_size=256)
 
 	trainer.train(validation_interval=1)
