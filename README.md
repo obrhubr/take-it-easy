@@ -1,7 +1,9 @@
 # Take It Easy
 
+ - Simple `python` implementation of Take it Easy with a nice API and support for generating visualisations
+ - Optimised `rust` bindings for `python` that implement a faster, optimised version (in the `parallel` branch)
+
 See the [rules](#game), how to [use the library](#usage) and the details about the following [bots](#bots):
- - Simple python implementation of the game
  - [Naïve heuristic based on probabilities](#bots)
  - [MCTS based solver](#bots)
  - [Neural Network based solver using DQN](#neural-network)
@@ -83,4 +85,6 @@ To run a benchmark comparing the approaches, I recommend running `python3 benchm
 
 The architecture of the neural network used to play the game was fully copied from the [polarbart/TakeItEasyAI](https://github.com/polarbart/TakeItEasyAI) repository.
 
-I reimplemented his DQN approach as a learning tool under `nn.py`. If you actually want to train your own model, please refer to the original, as my implementation is not optimised as to be more clear and understandable.
+I reimplemented his DQN approach as a learning tool under `nn.py`.
+
+The implementation in the `master` branch was written to be easily readable and understandable. Once I had understood [polarbart](https://github.com/polarbart)'s approach, I implemented an optimised `Trainer` using `rust` bindings in the `parallel` branch.
