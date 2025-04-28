@@ -235,6 +235,26 @@ class Trainer:
 			self.save()
 		return
 	
+	def __getstate__(self):
+		state = self.__dict__.copy()
+		state['net'] = self.net
+		state['optimizer'] = self.optimizer.state_dict()
+		state['lr_scheduler'] = self.lr_scheduler.state_dict()
+		return state
+
+	def __setstate__(self, state):
+		net = state['net']
+		optimizer = torch.optim.Adam(net.net.parameters(), state['lr'])
+		lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, state['lr_decay'])
+
+		optimizer.load_state_dict(state['optimizer'])
+		lr_scheduler.load_state_dict(state['lr_scheduler'])
+
+		state['optimizer'] = optimizer
+		state['lr_scheduler'] = lr_scheduler
+
+		self.__dict__ = state
+	
 	@staticmethod
 	def load(filename = "trainer.pkl"):
 		with open(filename, "rb") as f:
