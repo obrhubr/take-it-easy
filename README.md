@@ -2,6 +2,14 @@
 
 This branch implements an optimised approach to training, including `rust` bindings for Take It Easy.
 
+## Usage
+
+Requires the package `maturin` to be installed.
+
+Compile the `rust` bindings by running `make.sh` (make it executable using `chmod +x make.sh` before). This should automatically install the wheel into your current environment.
+
+You can then start training with `python3 nn.py` or configure the hyperparameters first.
+
 ## Why?
 
 The `rust` version implements a `BatchedBoard` class, which allows playing `n` games at the same time. This speeds up training massively, as the bottle-neck (inference on the model) is eliminated through batch inference.
