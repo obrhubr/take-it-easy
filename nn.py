@@ -263,17 +263,26 @@ class NNMaximiser(Maximiser):
 		self.net = Network()
 		self.net.load()
 
-	def heuristic(self) -> float:
+	def best_move(self, piece: tuple[int, int, int]) -> tuple[int, list[int]]:
 		"""
 		Use the nn to get an expected score for the current board.
 		"""
-		if len(self.board.filled_tiles) >= N_TILES - 2:
-			return 0
-		
-		with torch.no_grad():
-			qd = self.net.net(torch.from_numpy(self.board.one_hot()).unsqueeze(0))
+		states = torch.zeros((len(self.board.empty_tiles), self.net.input_size), dtype=torch.float)
+		rewards = torch.zeros((len(self.board.empty_tiles),), dtype=torch.float)
 
-		return float(qd.mean(1)) + self.board.score()
+		for idx, tile in enumerate(self.board.empty_tiles):
+			self.board.board[tile] = piece
+			states[idx] = torch.from_numpy(self.board.one_hot()).float()
+			rewards[idx] = self.board.score_change(tile)
+			self.board.board[tile] = None
+
+		if len(self.board.empty_tiles) > 1:
+			qd = self.net.net(states)
+			best_action = (qd + rewards.unsqueeze(1)).mean(1).argmax()
+		else:
+			best_action = rewards.argmax()
+
+		return self.board.empty_tiles[best_action], {}
 	
 if __name__ == "__main__":
 
