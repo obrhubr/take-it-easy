@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from torch.nn.functional import smooth_l1_loss
-import torch.multiprocessing as mp
 
 from takeiteasy.board import Board, N_TILES
 from takeiteasy.maximiser import Maximiser
@@ -58,6 +57,11 @@ class Trainer:
 			epsilon: float = 0.5,
 			epsilon_decay: float = 0.95
 		):
+		if game_batch_size > validation_steps:
+			raise Exception(f"Game batch size needs to be bigger than validation steps.")
+		if game_batch_size > games:
+			raise Exception(f"Game batch size needs to be bigger than games.")
+
 		self.net = Network()
 
 		# Training parameters
@@ -101,55 +105,75 @@ class Trainer:
 		# Initialise with -1s and mask them out during loss calculation
 		target_distributions = -torch.ones((self.games * ( N_TILES - 1), self.net.output_size), dtype=torch.float)
 		# How many positions were evaluated to find the best_action
-		n_samples = torch.empty((self.games * ( N_TILES - 1)), dtype=torch.int8)
-		
-		self.net.net.eval()
-		for game_idx in tqdm(range(self.games), desc=f"Creating dataset {self.iteration=}"):
-			board = Board()
+		n_samples = torch.zeros((self.games * ( N_TILES - 1),), dtype=torch.int8)
+
+		def train_batch(n: int):
+			boards = [Board() for _ in range(self.game_batch_size)]
+
 			for step in range(N_TILES):
-				state = torch.from_numpy(board.one_hot())
-				piece = board.draw()
+				empty_tiles_len = N_TILES - step
 
-				empty_tiles_len = len(board.empty_tiles)
+				# Initialise arrays
+				init_states = torch.zeros((self.game_batch_size, self.net.input_size), dtype=torch.float)
+				next_states = torch.zeros((self.game_batch_size, empty_tiles_len, self.net.input_size), dtype=torch.float)
+				rewards = torch.zeros((self.game_batch_size, empty_tiles_len), dtype=torch.float)
+				pieces = []
 
-				next_states = torch.zeros((empty_tiles_len, self.net.input_size), dtype=torch.float)
-				rewards = torch.zeros((empty_tiles_len), dtype=torch.float)
+				for board_idx, board in enumerate(boards):
+					init_states[board_idx] = torch.from_numpy(board.one_hot())
+					
+					piece = board.draw()
+					pieces += [piece]
 
-				# Enumerate over each possible placement and collect the states and rewards
-				for p, tile_idx in enumerate(board.empty_tiles):
-					board.board[tile_idx] = piece
-					next_states[p] = torch.from_numpy(board.one_hot())
-					rewards[p] = torch.tensor(board.score_change(tile_idx))
-					board.board[tile_idx] = None
+					# Enumerate over each possible placement and collect the states and rewards
+					for p, tile_idx in enumerate(board.empty_tiles):
+						board.board[tile_idx] = piece
+						
+						next_states[board_idx, p] = torch.from_numpy(board.one_hot())
+						rewards[board_idx, p] = torch.tensor(board.score_change(tile_idx))
+
+						board.board[tile_idx] = None
 
 				# Don't use the model to predict rewards for the final piece placed
 				# Here the reward is deterministic and can be fully calculated using `score_change`
 				if step < N_TILES - 1 and use_net:
-					qd = self.net.net(next_states)
+					qd = self.net.net(next_states.view(self.game_batch_size * empty_tiles_len, self.net.input_size))
+					qd = qd.view(self.game_batch_size, empty_tiles_len, self.net.output_size)
 				else:
-					qd = torch.zeros((len(board.empty_tiles), self.net.output_size), dtype=torch.float)
+					qd = torch.zeros((self.game_batch_size, empty_tiles_len, self.net.output_size), dtype=torch.float)
 
 				# Introduce randomness into the seen positions to prevent overfitting
 				if np.random.ranf() > self.epsilon:
 					# The best action is the one maximising expected score
-					best_action = torch.argmax(qd.mean(1)) # Mean over dimension 1 (for each of the games)
+					best_actions = torch.argmax(qd.mean(2), 1) # Mean over dimension 1 (for each of the games)
 				else:
-					best_action = np.random.randint(len(board.empty_tiles))
+					best_actions = np.random.randint(low=0, high=len(board.empty_tiles), size=(self.game_batch_size,))
 
 				# An expected score for an empty board doesn't make sense
 				# The model will only be called once a piece has been placed
 				if step > 0:
+					start = n * self.game_batch_size * ( N_TILES - 1) + (step - 1) * self.game_batch_size
+					end = start + self.game_batch_size
+
 					# Add (state, distribution after playing best move) to training set
-					data_idx = game_idx * (N_TILES - 1) + step - 1
-					states[data_idx] = state
-					target_distributions[data_idx] = rewards[best_action] + qd[best_action]
-					n_samples[data_idx] = empty_tiles_len
+					states[start:end] = init_states
+					n_samples[start:end] = torch.full((self.game_batch_size,), empty_tiles_len)
+					
+					# Get only the distribution for the best_actions
+					indices = torch.arange(rewards.size(0))
+					target_distributions[start:end] = rewards[indices, best_actions].unsqueeze(1) + qd[indices, best_actions]
 
 				# Play the best action
-				board.play(piece, board.empty_tiles[best_action])
+				for board_idx, board in enumerate(boards):
+					best_action = best_actions[board_idx]
+					board.play(pieces[board_idx], board.empty_tiles[best_action])
 
-			self.scores += [board.score()]
-
+			return [board.score() for board in boards]
+		
+		self.net.net.eval()
+		for b in tqdm(range(self.games // self.game_batch_size), desc=f"Creating dataset {self.iteration=}"):
+			self.scores += train_batch(b)
+		
 		return TensorDataset(states, target_distributions, n_samples)
 
 	@torch.no_grad()
@@ -157,9 +181,9 @@ class Trainer:
 		"""
 		Return the average score of the current net over `validation_steps` games.
 		"""
-		def validate_batch(size: int):
+		def validate_batch():
 			scores = []
-			boards = [Board() for _ in range(size)]
+			boards = [Board() for _ in range(self.game_batch_size)]
 
 			for step in range(N_TILES):
 				all_states = []
@@ -214,9 +238,12 @@ class Trainer:
 
 		scores = []
 		for _ in tqdm(range(self.validation_steps // self.game_batch_size), "Validating"):
-			scores += validate_batch(self.game_batch_size)
+			scores += validate_batch()
 
-		return np.mean(scores)
+		self.scores += scores
+
+		print(f"Validating model {self.iteration=}: mean={np.mean(scores):.2f} - min={np.min(scores)}, max={np.max(scores)}")
+		return
 	
 	def quantile_regression_loss(self, qd: torch.Tensor, tqd: torch.Tensor, n_samples: int):
 		"""
@@ -258,8 +285,7 @@ class Trainer:
 
 			# Every `validation_interval` steps, print the current average score.
 			if self.iteration % validation_interval == 0:
-				validation_score = self.validate()
-				print(f"Validating model {self.iteration=}: {validation_score:.2f}")
+				self.validate()
 
 			self.lr_scheduler.step()
 			self.epsilon *= self.epsilon_decay
@@ -310,6 +336,6 @@ if __name__ == "__main__":
 	if False:
 		trainer = Trainer.load()
 	else:
-		trainer = Trainer(games=1, validation_steps=128, game_batch_size=64, batch_size=1)
+		trainer = Trainer(game_batch_size=16, games=64, validation_steps=64, batch_size=32)
 
 	trainer.train(validation_interval=1)
