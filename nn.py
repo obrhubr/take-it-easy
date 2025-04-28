@@ -7,62 +7,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from torch.nn.functional import smooth_l1_loss
 
-from takeiteasy.board import Board, N_TILES
-from takeiteasy.maximiser import Maximiser
-
-class BatchedBoard:
-	def __init__(self, batch_size: int = 1024, input_size: int = 19 * 3 * 3):
-		self.batch_size = batch_size
-		self.input_size = input_size
-
-		# Init the boards
-		self.reset()
-		return
-	
-	def reset(self):
-		"""
-		Re-initialise all boards.
-		"""
-		self.boards = [Board() for _ in range(self.batch_size)]
-
-	def scores(self) -> list[int]:
-		"""
-		Return a list of all boards scores.
-		"""
-		return [board.score() for board in self.boards]
-
-	def states(self) -> tuple[torch.tensor, torch.tensor, torch.tensor, int]:
-		"""
-		Return state and (reward, next-states) for all boards.
-		"""
-		n_tiles = len(self.boards[0].empty_tiles)
-
-		states = torch.zeros((self.batch_size, self.input_size), dtype=torch.float)
-		next_states = torch.zeros((self.batch_size, n_tiles, self.input_size), dtype=torch.float)
-		rewards = torch.zeros((self.batch_size, n_tiles), dtype=torch.float)
-
-		for b, board in enumerate(self.boards):
-			states[b] = torch.from_numpy(board.one_hot())
-			
-			# Enumerate each possible move and store state and reward
-			piece = board.draw()
-			for t, tile_idx in enumerate(board.empty_tiles):
-				board.board[tile_idx] = piece
-				
-				# Store the board state and reward 
-				next_states[b, t] = torch.from_numpy(board.one_hot())
-				rewards[b, t] = torch.tensor(board.score_change(tile_idx))
-
-				board.board[tile_idx] = None
-
-		return states, next_states, rewards, n_tiles
-	
-	def play(self, tile_idxs: list[int]):
-		"""
-		Apply the given moves to the boards.
-		"""
-		for board, tile_idx in zip(self.boards, tile_idxs):
-			board._play(board.empty_tiles[tile_idx])
+from rust_takeiteasy import BatchedBoard, N_TILES
 
 class Network:
 	"""
@@ -166,10 +111,11 @@ class Trainer:
 		self.net.net.eval()
 		for n in tqdm(range(self.games // self.game_batch_size), desc=f"Creating dataset {self.iteration=}"):
 			# Initialise boards to play all at the same time
-			boards = BatchedBoard(batch_size=self.game_batch_size, input_size=self.net.input_size)
+			boards = BatchedBoard(self.game_batch_size)
 
 			for step in range(N_TILES):
 				init_states, next_states, rewards, n_tiles = boards.states()
+				init_states, next_states, rewards = torch.from_numpy(init_states).float(), torch.from_numpy(next_states).float(), torch.from_numpy(rewards).float()
 
 				# Don't use the model to predict rewards for the final piece placed
 				# Here the reward is deterministic and can be fully calculated using `score_change`
@@ -186,7 +132,7 @@ class Trainer:
 					# argmax over dim=1 to find the best move for each game
 					best_actions = torch.argmax(qd.mean(2), 1)
 				else:
-					best_actions = np.random.randint(low=0, high=n_tiles, size=(self.game_batch_size,))
+					best_actions = torch.from_numpy(np.random.randint(low=0, high=n_tiles, size=(self.game_batch_size,)))
 
 				# An expected score for an empty board doesn't make sense
 				# The model will only be called once a piece has been placed
@@ -203,9 +149,9 @@ class Trainer:
 					target_distributions[start:end] = rewards[indices, best_actions].unsqueeze(1) + qd[indices, best_actions]
 
 				# Play best moves for all boards
-				boards.play(best_actions)
+				boards.play(best_actions.to(dtype=torch.uint8).numpy())
 
-			self.scores += boards.scores()
+			self.scores += list(boards.scores())
 		
 		return TensorDataset(states, target_distributions, n_samples)
 
@@ -218,10 +164,11 @@ class Trainer:
 
 		self.net.net.eval()
 		for _ in tqdm(range(self.validation_steps // self.game_batch_size), "Validating"):
-			boards = BatchedBoard(batch_size=self.game_batch_size, input_size=self.net.input_size)
+			boards = BatchedBoard(self.game_batch_size)
 
 			for step in range(N_TILES):
-				_, next_states, rewards, n_tiles = boards.states()
+				_, next_states, _, n_tiles = boards.states()
+				next_states = torch.from_numpy(next_states).float()
 
 				# Only use net before last step
 				if step < N_TILES - 1:
@@ -230,9 +177,9 @@ class Trainer:
 					qd = torch.zeros((self.game_batch_size, n_tiles, self.net.output_size), dtype=torch.float)
 					
 				best_actions = torch.argmax(qd.mean(2), 1)
-				boards.play(best_actions)
+				boards.play(best_actions.to(dtype=torch.uint8).numpy())
 
-			scores += boards.scores()
+			scores += list(boards.scores())
 
 		self.scores += scores
 		print(f"Validating model {self.iteration=}: mean={np.mean(scores):.2f}, min={np.min(scores)}, max={np.max(scores)}")
@@ -297,31 +244,6 @@ class Trainer:
 		with open(filename, "wb") as f:
 			pickle.dump(self, f)
 		self.net.save()
-
-class NNMaximiser(Maximiser):
-	"""
-	Implements the neural network powered maximiser. Overrides the heuristic function.
-	"""
-	def __init__(self, board: Board, debug: bool = False):
-		# Weigh reward and neural network heuristic the same
-		super().__init__(board, debug)
-
-		self.net = Network()
-		self.net.load()
-
-	def heuristic(self) -> float:
-		"""
-		Use the nn to get an expected score for the current board.
-		"""
-		if len(self.board.filled_tiles) == N_TILES - 1:
-			return 0
-		
-		states = torch.empty((1, N_TILES*3*3), dtype=torch.float)
-		states[0] = torch.from_numpy(self.board.one_hot())
-		with torch.no_grad():
-			qd = self.net.net(states)
-
-		return float(qd.mean(1)) + self.board.score()
 	
 if __name__ == "__main__":
 
@@ -329,6 +251,6 @@ if __name__ == "__main__":
 	if False:
 		trainer = Trainer.load()
 	else:
-		trainer = Trainer(games=256, validation_steps=256, game_batch_size=128, batch_size=128)
+		trainer = Trainer()
 
 	trainer.train(validation_interval=1)
