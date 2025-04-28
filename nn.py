@@ -162,12 +162,10 @@ class Trainer:
 		Return the average score of the current net over `validation_steps` games.
 		"""
 		scores = []
-		pieces = []
 
 		self.net.net.eval()
 		for _ in tqdm(range(self.validation_steps // self.game_batch_size), "Validating"):
 			boards = BatchedBoard(self.game_batch_size)
-			pieces += [b for b in boards.boards]
 
 			for step in range(N_TILES):
 				_, next_states, rewards, n_tiles = boards.states()
