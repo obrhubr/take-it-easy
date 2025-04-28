@@ -7,6 +7,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from torch.nn.functional import smooth_l1_loss
 
+from takeiteasy import Maximiser, Board
 from rust_takeiteasy import BatchedBoard, N_TILES
 
 class Network:
@@ -264,6 +265,29 @@ class Trainer:
 		with open(filename, "wb") as f:
 			pickle.dump(self, f)
 		self.net.save()
+
+class NNMaximiser(Maximiser):
+	"""
+	Implements the neural network powered maximiser. Overrides the heuristic function.
+	"""
+	def __init__(self, board: Board, debug: bool = False):
+		# Weigh reward and neural network heuristic the same
+		super().__init__(board, debug)
+
+		self.net = Network()
+		self.net.load()
+
+	def heuristic(self) -> float:
+		"""
+		Use the nn to get an expected score for the current board.
+		"""
+		if len(self.board.filled_tiles) >= N_TILES - 2:
+			return 0
+		
+		with torch.no_grad():
+			qd = self.net.net(torch.from_numpy(self.board.one_hot()).unsqueeze(0))
+
+		return float(qd.mean(1)) + self.board.score()
 	
 if __name__ == "__main__":
 
