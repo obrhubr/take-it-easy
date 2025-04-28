@@ -162,22 +162,25 @@ class Trainer:
 		Return the average score of the current net over `validation_steps` games.
 		"""
 		scores = []
+		pieces = []
 
 		self.net.net.eval()
 		for _ in tqdm(range(self.validation_steps // self.game_batch_size), "Validating"):
 			boards = BatchedBoard(self.game_batch_size)
+			pieces += [b for b in boards.boards]
 
 			for step in range(N_TILES):
-				_, next_states, _, n_tiles = boards.states()
-				next_states = torch.from_numpy(next_states).float()
+				_, next_states, rewards, n_tiles = boards.states()
+				next_states, rewards = torch.from_numpy(next_states).float(), torch.from_numpy(rewards).float()
 
 				# Only use net before last step
 				if step < N_TILES - 1:
 					qd = self.net.net(next_states)
 				else:
 					qd = torch.zeros((self.game_batch_size, n_tiles, self.net.output_size), dtype=torch.float)
-					
-				best_actions = torch.argmax(qd.mean(2), 1)
+				
+				expected = qd.mean(2) + rewards
+				best_actions = torch.argmax(expected, 1)
 				boards.play(best_actions.to(dtype=torch.uint8).numpy())
 
 			scores += list(boards.scores())
