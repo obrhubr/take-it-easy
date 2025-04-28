@@ -11,10 +11,9 @@ from takeiteasy.board import Board, N_TILES
 from takeiteasy.maximiser import Maximiser
 
 class BatchedBoard:
-	def __init__(self, batch_size: int = 1024, input_size: int = 19 * 3 * 3, output_size: int = 100):
+	def __init__(self, batch_size: int = 1024, input_size: int = 19 * 3 * 3):
 		self.batch_size = batch_size
 		self.input_size = input_size
-		self.output_size = output_size
 
 		# Init the boards
 		self.reset()
@@ -167,7 +166,7 @@ class Trainer:
 		self.net.net.eval()
 		for n in tqdm(range(self.games // self.game_batch_size), desc=f"Creating dataset {self.iteration=}"):
 			# Initialise boards to play all at the same time
-			boards = BatchedBoard(batch_size=self.game_batch_size, input_size=self.net.input_size, output_size=self.net.output_size)
+			boards = BatchedBoard(batch_size=self.game_batch_size, input_size=self.net.input_size)
 
 			for step in range(N_TILES):
 				init_states, next_states, rewards, n_tiles = boards.states()
@@ -219,7 +218,7 @@ class Trainer:
 
 		self.net.net.eval()
 		for _ in tqdm(range(self.validation_steps // self.game_batch_size), "Validating"):
-			boards = BatchedBoard(batch_size=self.game_batch_size, input_size=self.net.input_size, output_size=self.net.output_size)
+			boards = BatchedBoard(batch_size=self.game_batch_size, input_size=self.net.input_size)
 
 			for step in range(N_TILES):
 				_, next_states, rewards, n_tiles = boards.states()
