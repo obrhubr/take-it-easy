@@ -273,9 +273,6 @@ class NNMaximiser(Maximiser):
 		with torch.no_grad():
 			qd = self.net.net(torch.from_numpy(self.board.one_hot()).unsqueeze(0))
 
-		if qd.mean(1) < 0:
-			print("<0")
-
 		return float(qd.mean(1)) + self.board.score()
 	
 if __name__ == "__main__":
