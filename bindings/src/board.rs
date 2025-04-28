@@ -4,6 +4,7 @@ use numpy::{PyArray1, IntoPyArray};
 use pyo3::prelude::*;
 
 pub static PIECES: [[u8; 3]; 27] = [[1, 2, 3], [1, 2, 4], [1, 2, 8], [1, 6, 3], [1, 6, 4], [1, 6, 8], [1, 7, 3], [1, 7, 4], [1, 7, 8], [5, 2, 3], [5, 2, 4], [5, 2, 8], [5, 6, 3], [5, 6, 4], [5, 6, 8], [5, 7, 3], [5, 7, 4], [5, 7, 8], [9, 2, 3], [9, 2, 4], [9, 2, 8], [9, 6, 3], [9, 6, 4], [9, 6, 8], [9, 7, 3], [9, 7, 4], [9, 7, 8]];
+pub static N_PIECES: usize = PIECES.len();
 pub static N_TILES: usize = 19;
 
 pub static INVALID: u8 = 255;
@@ -53,7 +54,7 @@ impl Board {
         let mut rng = rng();
 
         // Shuffle pieces
-        let mut pieces: Vec<u8> = (0 .. N_TILES as u8).collect();
+        let mut pieces: Vec<u8> = (0 .. N_PIECES as u8).collect();
         pieces.shuffle(&mut rng);
 
         Board { board: [INVALID; N_TILES], pieces, empty_tiles: (0 .. N_TILES as u8).collect(), piece: INVALID }
