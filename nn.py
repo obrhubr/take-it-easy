@@ -32,8 +32,8 @@ class Network:
 	def forward(self, x: torch.Tensor):
 		return self.net(x)
 	
-	def load(self, filename = "model.pkl"):
-		self.net = torch.load(filename, weights_only=False)
+	def load(self, filename = "model.pkl", device: str = "cpu"):
+		self.net = torch.load(filename, weights_only=False, map_location=device)
 		return
 	
 	def save(self, filename = "model.pkl"):
@@ -285,7 +285,7 @@ class NNMaximiser(Maximiser):
 		super().__init__(board, debug)
 
 		self.net = Network()
-		self.net.load()
+		self.net.load(device="cpu")
 		self.net.net.eval()
 
 	def best_move(self, piece: tuple[int, int, int]) -> tuple[int, list[int]]:
