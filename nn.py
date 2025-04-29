@@ -260,7 +260,8 @@ class Trainer:
 		return state
 
 	def __setstate__(self, state):
-		net = Network(state['net_input_size'], state['net_output_size'], state['net_hidden_neurons'])
+		net = Network(input_size=state['net_input_size'], output_size=state['net_output_size'], hidden_size=state['net_hidden_size'])
+		
 		optimizer = torch.optim.Adam(net.net.parameters(), state['lr'])
 		lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, state['lr_decay'])
 
@@ -275,13 +276,11 @@ class Trainer:
 		self.__dict__ = state
 	
 	@staticmethod
-	def load(filename = "trainer.pkl"):
-		with open(filename, "rb") as f:
-			return pickle.load(f)
+	def load(filename = "trainer.pkl", device: str = None):
+		return torch.load(filename, weights_only=False, map_location=device if device else "cuda" if torch.cuda.is_available() else "cpu")
 	
 	def save(self, filename = "trainer.pkl"):
-		with open(filename, "wb") as f:
-			pickle.dump(self, f)
+		torch.save(self, filename)
 		self.net.save()
 
 class NNMaximiser(Maximiser):
@@ -320,7 +319,7 @@ class NNMaximiser(Maximiser):
 if __name__ == "__main__":
 
 	# Load the trainer from file and continue
-	if False:
+	if True:
 		trainer = Trainer.load()
 	else:
 		trainer = Trainer()
