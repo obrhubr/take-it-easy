@@ -113,7 +113,7 @@ class Trainer:
 		target_distributions = -torch.ones((self.games * ( N_TILES - 1), self.net.output_size), dtype=torch.float, device=self.device)
 		
 		# How many positions were evaluated to find the best_action
-		n_samples = torch.zeros((self.games * ( N_TILES - 1),), dtype=torch.int8)
+		n_samples = torch.zeros((self.games * ( N_TILES - 1),), dtype=torch.int8, device=self.device)
 
 		self.net.net.eval()
 		for n in tqdm(range(self.games // self.game_batch_size), desc=f"Creating dataset {self.iteration=}"):
@@ -179,11 +179,11 @@ class Trainer:
 				if step < N_TILES - 1:
 					qd = self.net.net(next_states)
 				else:
-					qd = torch.zeros((self.game_batch_size, n_tiles, self.net.output_size), dtype=torch.float)
+					qd = torch.zeros((self.game_batch_size, n_tiles, self.net.output_size), dtype=torch.float, device=self.device)
 				
 				expected = qd.mean(2) + rewards
 				best_actions = torch.argmax(expected, 1)
-				boards.play(best_actions.to(dtype=torch.uint8).numpy())
+				boards.play(best_actions.cpu().to(dtype=torch.uint8).numpy())
 
 			scores += scores
 
