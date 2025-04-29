@@ -55,14 +55,19 @@ class Trainer:
 			lr: float = 3e-4,
 			lr_decay: float = 0.97,
 			epsilon: float = 0.5,
-			epsilon_decay: float = 0.95
+			epsilon_decay: float = 0.97,
+			device: str = None
 		):
 		if game_batch_size > validation_steps:
 			raise Exception(f"Game batch size needs to be bigger than validation steps.")
 		if game_batch_size > games:
 			raise Exception(f"Game batch size needs to be bigger than games.")
 
+		self.device = torch.device(device if device else "cuda" if torch.cuda.is_available() else "cpu")
+		print(f"Training using {self.device}.")
+
 		self.net = Network()
+		self.net.net.to(self.device)
 
 		# Training parameters
 		self.iteration = 1
@@ -85,9 +90,10 @@ class Trainer:
 		self.epsilon_decay = epsilon_decay
 
 		# Distribution
-		self.tau = (2 * torch.arange(self.net.output_size, dtype=torch.float) + 1) / (2 * self.net.output_size)
+		self.tau = (2 * torch.arange(self.net.output_size, dtype=torch.float, device=self.device) + 1) / (2 * self.net.output_size)
 
 		# Logging
+		self.epsilons = []
 		self.losses = []
 		self.scores = []
 	
@@ -101,10 +107,10 @@ class Trainer:
 		while the net is uninitialised.
 		"""
 		# Training data: number_of_games * (steps_in_each_game - 1) because first step is not added to training data
-		states = torch.zeros((self.games * (N_TILES - 1), self.net.input_size), dtype=torch.float)
+		states = torch.zeros((self.games * (N_TILES - 1), self.net.input_size), dtype=torch.float, device=self.device)
 		
 		# Initialise with -1s and mask them out during loss calculation
-		target_distributions = -torch.ones((self.games * ( N_TILES - 1), self.net.output_size), dtype=torch.float)
+		target_distributions = -torch.ones((self.games * ( N_TILES - 1), self.net.output_size), dtype=torch.float, device=self.device)
 		
 		# How many positions were evaluated to find the best_action
 		n_samples = torch.zeros((self.games * ( N_TILES - 1),), dtype=torch.int8)
@@ -116,7 +122,7 @@ class Trainer:
 
 			for step in range(N_TILES):
 				init_states, next_states, rewards, n_tiles = boards.states()
-				init_states, next_states, rewards = torch.from_numpy(init_states).float(), torch.from_numpy(next_states).float(), torch.from_numpy(rewards).float()
+				init_states, next_states, rewards = torch.from_numpy(init_states).to(self.device).float(), torch.from_numpy(next_states).to(self.device).float(), torch.from_numpy(rewards).to(self.device).float()
 
 				# Don't use the model to predict rewards for the final piece placed
 				# Here the reward is deterministic and can be fully calculated using `score_change`
@@ -124,7 +130,7 @@ class Trainer:
 					qd = self.net.net(next_states.view(self.game_batch_size * n_tiles, self.net.input_size))
 					qd = qd.view(self.game_batch_size, n_tiles, self.net.output_size)
 				else:
-					qd = torch.zeros((self.game_batch_size, n_tiles, self.net.output_size), dtype=torch.float)
+					qd = torch.zeros((self.game_batch_size, n_tiles, self.net.output_size), dtype=torch.float, device=self.device)
 
 				# Introduce randomness into the seen positions to prevent overfitting
 				if np.random.ranf() > self.epsilon:
@@ -143,16 +149,14 @@ class Trainer:
 
 					# Add (state, distribution after playing best move) to training set
 					states[start:end] = init_states
-					n_samples[start:end] = torch.full((self.game_batch_size,), n_tiles)
+					n_samples[start:end] = torch.full((self.game_batch_size,), n_tiles, device=self.device)
 					
 					# Get only the distribution for the best_actions
 					indices = torch.arange(rewards.size(0))
 					target_distributions[start:end] = rewards[indices, best_actions].unsqueeze(1) + qd[indices, best_actions]
 
 				# Play best moves for all boards
-				boards.play(best_actions.to(dtype=torch.uint8).numpy())
-
-			self.scores += list(boards.scores())
+				boards.play(best_actions.to(dtype=torch.uint8).cpu().numpy())
 		
 		return TensorDataset(states, target_distributions, n_samples)
 
@@ -169,7 +173,7 @@ class Trainer:
 
 			for step in range(N_TILES):
 				_, next_states, rewards, n_tiles = boards.states()
-				next_states, rewards = torch.from_numpy(next_states).float(), torch.from_numpy(rewards).float()
+				next_states, rewards = torch.from_numpy(next_states).to(self.device).float(), torch.from_numpy(rewards).to(self.device).float()
 
 				# Only use net before last step
 				if step < N_TILES - 1:
@@ -181,9 +185,9 @@ class Trainer:
 				best_actions = torch.argmax(expected, 1)
 				boards.play(best_actions.to(dtype=torch.uint8).numpy())
 
-			scores += list(boards.scores())
+			scores += scores
 
-		self.scores += scores
+		self.scores += [{ "iteration": self.iteration, "scores": list(boards.scores()) }]
 		print(f"Validating model {self.iteration=}: mean={np.mean(scores):.2f}, min={np.min(scores)}, max={np.max(scores)}")
 		return
 	
@@ -208,10 +212,13 @@ class Trainer:
 		as the outputs will not make sense yet. This would disturb training.
 		"""
 		while self.iteration < self.iterations:
+			self.epsilons += [{ "iteration": self.iteration, "epsilon": self.epsilon }]
+
 			dataset = self.create_dataset(use_net=self.iteration > 1)
 			dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
 			self.net.net.train()
+			losses = []
 			for _ in tqdm(range(self.epochs), desc=f"Training {self.iteration}"):
 				for states, target_distributions, n_samples in dataloader:
 					self.optimizer.zero_grad()
@@ -223,7 +230,9 @@ class Trainer:
 					self.optimizer.step()
 
 					# Log loss
-					self.losses += [loss.item()]
+					losses += [loss.item()]
+				
+			self.losses += [{ "iteration": self.iteration, "loss": losses }]
 
 			# Every `validation_interval` steps, print the current average score.
 			if self.iteration % validation_interval == 0:
