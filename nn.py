@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.nn.functional import smooth_l1_loss
 
 from takeiteasy import Maximiser, Board
-from rust_takeiteasy import BatchedBoard, N_TILES
+from rust_takeiteasy import BatchedBoard, N_TILES, N_PIECES
 
 class Network:
 	"""
@@ -116,10 +116,10 @@ class Trainer:
 		states = torch.zeros((self.games * (N_TILES - 1), self.net.input_size), dtype=torch.float, device=self.device)
 		
 		# Initialise with -1s and mask them out during loss calculation
-		target_distributions = -torch.ones((self.games * ( N_TILES - 1), self.net.output_size), dtype=torch.float, device=self.device)
+		target_distributions = -torch.ones((self.games * (N_TILES - 1), self.net.output_size), dtype=torch.float, device=self.device)
 		
 		# How many positions were evaluated to find the best_action
-		n_samples = torch.zeros((self.games * ( N_TILES - 1),), dtype=torch.int8, device=self.device)
+		n_samples = torch.zeros((self.games * (N_TILES - 1),), dtype=torch.int8, device=self.device)
 
 		self.net.net.eval()
 		for n in tqdm(range(self.games // self.game_batch_size), desc=f"Creating dataset {self.iteration=}"):
@@ -150,12 +150,12 @@ class Trainer:
 				# An expected score for an empty board doesn't make sense
 				# The model will only be called once a piece has been placed
 				if step > 0:
-					start = n * self.game_batch_size * ( N_TILES - 1) + (step - 1) * self.game_batch_size
+					start = n * self.game_batch_size * (N_TILES - 1) + (step - 1) * self.game_batch_size
 					end = start + self.game_batch_size
 
-					# Add (state, distribution after playing best move) to training set
 					states[start:end] = init_states
-					n_samples[start:end] = torch.full((self.game_batch_size,), n_tiles, device=self.device)
+					# Add the number of pieces left on the stack
+					n_samples[start:end] = torch.full((self.game_batch_size,), N_PIECES - step, device=self.device)
 					
 					# Get only the distribution for the best_actions
 					indices = torch.arange(rewards.size(0))
@@ -202,6 +202,9 @@ class Trainer:
 		Custom loss function for Distributional Quantile Regression models.
 		"""
 		mask = (tqd != -1)
+
+		# Divide by number of pieces remaining on stack
+		# Ensures situation is weighted according to probability of drawing that specific piece
 		weight = torch.abs((self.tau - (tqd < qd.detach()).float())) / n_samples.unsqueeze(1)
 
 		qd, tqd = torch.broadcast_tensors(qd, tqd)
@@ -306,6 +309,7 @@ class NNMaximiser(Maximiser):
 		self.net.load(device="cpu")
 		self.net.net.eval()
 
+	@torch.no_grad()
 	def best_move(self, piece: tuple[int, int, int]) -> tuple[int, list[int]]:
 		"""
 		Use the nn to get an expected score for the current board.
@@ -313,6 +317,7 @@ class NNMaximiser(Maximiser):
 		states = torch.zeros((len(self.board.empty_tiles), self.net.input_size), dtype=torch.float)
 		rewards = torch.zeros((len(self.board.empty_tiles),), dtype=torch.float)
 
+		tile_labels = {}
 		for idx, tile in enumerate(self.board.empty_tiles):
 			self.board.board[tile] = piece
 			states[idx] = torch.from_numpy(self.board.one_hot()).float()
@@ -321,16 +326,25 @@ class NNMaximiser(Maximiser):
 
 		if len(self.board.empty_tiles) > 1:
 			qd = self.net.net(states)
-			best_action = (qd + rewards.unsqueeze(1)).mean(1).argmax()
+			expectations = (qd + rewards.unsqueeze(1)).mean(1)
+			best_action = expectations.argmax()
+			
+			if self.debug:
+				score = self.board.score()
+				tile_labels = {tile: expectations[n] + score for n, tile in enumerate(self.board.empty_tiles)}
 		else:
 			best_action = rewards.argmax()
+			
+			if self.debug:
+				score = self.board.score()
+				tile_labels = {tile: rewards[n] + score for n, tile in enumerate(self.board.empty_tiles)}
 
-		return self.board.empty_tiles[best_action], {}
+		return self.board.empty_tiles[best_action], tile_labels
 	
 if __name__ == "__main__":
 
 	# Load the trainer from file and continue
-	if True:
+	if False:
 		trainer = Trainer.load()
 	else:
 		trainer = Trainer()
