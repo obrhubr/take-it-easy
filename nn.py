@@ -185,9 +185,9 @@ class Trainer:
 				best_actions = torch.argmax(expected, 1)
 				boards.play(best_actions.cpu().to(dtype=torch.uint8).numpy())
 
-			scores += scores
+			scores += list(boards.scores())
 
-		self.scores += [{ "iteration": self.iteration, "scores": list(boards.scores()) }]
+		self.scores += [{ "iteration": self.iteration, "scores": scores }]
 		print(f"Validating model {self.iteration=}: mean={np.mean(scores):.2f}, min={np.min(scores)}, max={np.max(scores)}")
 		return
 	
