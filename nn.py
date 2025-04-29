@@ -48,15 +48,18 @@ class Trainer:
 			self,
 			batch_size: int = 256,
 			games: int = 16384,
-			game_batch_size: int = 4096,
-			validation_steps: int = 8192,
-			iterations: int = 100,
+			game_batch_size: int = 8192,
+			validation_steps: int = 16384,
+			iterations: int = 150,
 			epochs: int = 8,
 			lr: float = 3e-4,
 			lr_decay: float = 0.97,
 			epsilon: float = 0.5,
 			epsilon_decay: float = 0.97,
-			device: str = None
+			device: str = None,
+			net_input_size: int = 19*3*3,
+			net_output_size: int = 100,
+			net_hidden_size: int = 2048
 		):
 		if game_batch_size > validation_steps:
 			raise Exception(f"Game batch size needs to be bigger than validation steps.")
@@ -66,7 +69,10 @@ class Trainer:
 		self.device = torch.device(device if device else "cuda" if torch.cuda.is_available() else "cpu")
 		print(f"Training using {self.device}.")
 
-		self.net = Network()
+		self.net_input_size = net_input_size
+		self.net_output_size = net_output_size
+		self.net_hidden_size = net_hidden_size
+		self.net = Network(input_size=net_input_size, output_size=net_output_size, hidden_size=net_hidden_size)
 		self.net.net.to(self.device)
 
 		# Training parameters
@@ -248,19 +254,21 @@ class Trainer:
 	
 	def __getstate__(self):
 		state = self.__dict__.copy()
-		state['net'] = self.net
+		state['net'] = self.net.net.state_dict()
 		state['optimizer'] = self.optimizer.state_dict()
 		state['lr_scheduler'] = self.lr_scheduler.state_dict()
 		return state
 
 	def __setstate__(self, state):
-		net = state['net']
+		net = Network(state['net_input_size'], state['net_output_size'], state['net_hidden_neurons'])
 		optimizer = torch.optim.Adam(net.net.parameters(), state['lr'])
 		lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, state['lr_decay'])
 
+		net.net.load_state_dict(state['net'])
 		optimizer.load_state_dict(state['optimizer'])
 		lr_scheduler.load_state_dict(state['lr_scheduler'])
 
+		state['net'] = net
 		state['optimizer'] = optimizer
 		state['lr_scheduler'] = lr_scheduler
 
