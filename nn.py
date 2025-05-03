@@ -1,10 +1,9 @@
 import numpy as np
 from tqdm import tqdm
-import pickle
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import TensorDataset
 from torch.nn.functional import smooth_l1_loss
 
 from takeiteasy import Maximiser, Board
@@ -86,6 +85,34 @@ class Buffer:
 	def __len__(self):
 		return self.states.size(0)
 
+class CustomDataLoader:
+    """
+    A custom dataloader which is significantly faster compared to the PyTorch dataloader if the dataset is already on the gpu
+	From: https://github.com/polarbart/TakeItEasyAI/blob/master/trainer_distributional_quantile_regression.py#L47
+    """
+    def __init__(self, dataset: Buffer, batch_size: int, device: str, data_device: str):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.num_batches = len(dataset) // batch_size
+        self.device = device
+        self.data_device = data_device
+        self.batches = None
+        self.idx = None
+
+    def __iter__(self):
+        self.batches = torch.randperm(len(self.dataset), device=self.data_device)[:self.num_batches * self.batch_size].view((self.num_batches, self.batch_size))
+        self.idx = 0
+        return self
+
+    def __next__(self):
+        if self.idx >= self.num_batches:
+            raise StopIteration
+        ret = self.dataset[self.batches[self.idx]]
+        self.idx += 1
+        return ret
+
+    def __len__(self):
+        return self.num_batches
 	
 class Trainer:
 	"""
@@ -93,7 +120,7 @@ class Trainer:
 	"""
 	def __init__(
 			self,
-			batch_size: int = 256,
+			batch_size: int = 128,
 			games: int = 16384,
 			game_batch_size: int = 1024,
 			validation_steps: int = 16384,
@@ -102,7 +129,7 @@ class Trainer:
 			lr: float = 3e-4,
 			lr_decay: float = 0.97,
 			epsilon: float = 0.5,
-			epsilon_decay: float = 0.97,
+			epsilon_decay: float = 0.95,
 			device: str = None,
 			net_input_size: int = 19*3*3,
 			net_output_size: int = 100,
@@ -193,7 +220,7 @@ class Trainer:
 					np.random.randint(low=0, high=N_TILES - step, size=(self.game_batch_size,), dtype=np.uint8),
 
 					# For each game (dim=0), get the best action given the first piece
-					# This is because the first piece is the one to be atcually played in the simulation
+					# This is because the first piece is the one to be actually played in the simulation
 					# The other pieces are tried just to augment the training data
 					best_actions[:, 0].cpu().numpy().astype(np.uint8)
 				)
@@ -257,14 +284,13 @@ class Trainer:
 		"""
 		Custom loss function for Distributional Quantile Regression models.
 		"""
-
 		tqd = tqd.view(tqd.size(0), 1, -1)
 		qd = qd.unsqueeze(2)
 
 		# Divide by number of pieces remaining on stack
 		# Ensures situation is weighted according to probability of drawing that specific piece
-		weight = torch.abs((self.tau - (tqd < qd.detach()).float())) / n_samples.view(-1, 1, 1)
 		mask = (tqd != -1)
+		weight = torch.abs((self.tau - (tqd < qd.detach()).float())) / n_samples.view(-1, 1, 1)
 
 		qd, tqd = torch.broadcast_tensors(qd, tqd)
 		loss = (weight * mask * smooth_l1_loss(qd, tqd, reduction='none'))
@@ -283,7 +309,7 @@ class Trainer:
 			self.epsilons += [{ "iteration": self.iteration, "epsilon": self.epsilon }]
 
 			dataset = self.create_dataset(use_net=self.iteration > 1)
-			dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+			dataloader = CustomDataLoader(dataset, batch_size=self.batch_size, device=self.device, data_device=self.device)
 
 			self.net.net.train()
 			losses = []
@@ -302,15 +328,15 @@ class Trainer:
 				
 			self.losses += [{ "iteration": self.iteration, "loss": losses }]
 
+			self.lr_scheduler.step()
+			self.epsilon *= self.epsilon_decay
+
 			# Every `validation_interval` steps, print the current average score.
 			if self.iteration % validation_interval == 0:
 				self.validate()
 
-			self.lr_scheduler.step()
-			self.epsilon *= self.epsilon_decay
-			self.iteration += 1
-
 			# Save model and trainer after every step
+			self.iteration += 1
 			self.save()
 		return
 	

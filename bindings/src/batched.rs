@@ -9,15 +9,14 @@ use crate::board::{Board, INVALID, N_TILES};
 pub struct BatchedBoard {
     size: usize,
 	boards: Vec<Board>,
-	pieces: Vec<u8>,
-	empty_tiles: usize
+	pieces: Vec<u8>
 }
 
 #[pymethods]
 impl BatchedBoard {
     #[new]
 	fn new(size: usize) -> Self {
-		let mut boards = BatchedBoard { size, boards: Vec::new(), pieces: Vec::new(), empty_tiles: N_TILES };
+		let mut boards = BatchedBoard { size, boards: Vec::new(), pieces: Vec::new() };
 		
 		// Initialise empty boards
 		boards.reset();
@@ -32,8 +31,6 @@ impl BatchedBoard {
 		for _ in 0 .. self.size {
 			self.boards.push(Board::new());
 		}
-
-		self.empty_tiles = N_TILES;
 	}
 
 	fn states(&mut self, py: Python, iter_over_pieces: bool) -> Py<PyTuple> {
@@ -122,8 +119,6 @@ impl BatchedBoard {
 			let tile_idx = self.boards[board_idx].empty_tiles[m as usize];
 			self.boards[board_idx].play_(tile_idx);
 		}
-
-		self.empty_tiles -= 1;
 	}
 
 	fn scores(&mut self, py: Python) -> Py<PyArray1<u32>>{
