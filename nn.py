@@ -32,8 +32,8 @@ class Network:
 	def forward(self, x: torch.Tensor):
 		return self.net(x)
 	
-	def load(self, filename = "model.pkl"):
-		self.net = torch.load(filename, weights_only=False)
+	def load(self, filename = "model.pkl", device: str = "cpu"):
+		self.net = torch.load(filename, weights_only=False, map_location=device)
 		return
 	
 	def save(self, filename = "model.pkl"):
@@ -242,25 +242,40 @@ class Trainer:
 			self.save()
 		return
 	
-	def __getstate__(self):
-		state = self.__dict__.copy()
-		state['net'] = self.net
-		state['optimizer'] = self.optimizer.state_dict()
-		state['lr_scheduler'] = self.lr_scheduler.state_dict()
-		return state
-
 	def __setstate__(self, state):
-		net = state['net']
+		net = Network(input_size=state['net_input_size'], output_size=state['net_output_size'], hidden_size=state['net_hidden_size'])
+		net.net.load_state_dict(state['net'])
+
+		# Set to device if cuda is available - train using gpu if was trained on cpu originally
+		state['device'] = state['device'] if torch.cuda.is_available() else "cpu"
+		net.net.to(state['device'])
+
 		optimizer = torch.optim.Adam(net.net.parameters(), state['lr'])
 		lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, state['lr_decay'])
 
 		optimizer.load_state_dict(state['optimizer'])
 		lr_scheduler.load_state_dict(state['lr_scheduler'])
 
+		state['net'] = net
 		state['optimizer'] = optimizer
 		state['lr_scheduler'] = lr_scheduler
 
 		self.__dict__ = state
+	
+	@staticmethod
+	def load(filename = "trainer.pkl", device: str = None):
+		if device is None:
+			device = "cuda" if torch.cuda.is_available() else "cpu"
+
+		self = torch.load(filename, weights_only=False, map_location=device)
+		self.device = device
+		self.net.net.to(self.device)
+
+		return self
+	
+	def save(self, filename = "trainer.pkl"):
+		torch.save(self, filename)
+		self.net.save()
 	
 	@staticmethod
 	def load(filename = "trainer.pkl"):
