@@ -49,7 +49,7 @@ class Buffer:
 		self.states = torch.zeros((n_games * (N_TILES - 1), input_size), dtype=torch.uint8, device=device)
 		
 		# Initialise with -1s and mask them out during loss calculation
-		self.target_distributions = -torch.ones((n_games * (N_TILES - 1),  (N_PIECES - 1), output_size), dtype=torch.uint8, device=device)
+		self.target_distributions = -torch.ones((n_games * (N_TILES - 1),  (N_PIECES - 1), output_size), dtype=torch.half, device=device)
 		
 		# How many positions were evaluated to find the best_action
 		self.n_samples = torch.zeros((n_games * (N_TILES - 1),), dtype=torch.int8, device=device)
