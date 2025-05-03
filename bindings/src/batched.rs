@@ -3,7 +3,7 @@ use ndarray::Array4;
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyArray3, PyArray4, PyReadonlyArrayDyn};
 use pyo3::types::PyTuple;
 
-use crate::board::{Board, INVALID, N_TILES};
+use crate::board::{Board, INVALID};
 
 #[pyclass]
 pub struct BatchedBoard {
