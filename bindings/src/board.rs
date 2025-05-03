@@ -131,8 +131,8 @@ impl Board {
         arr
     }
 
-    pub fn score_change(&self, tile_idx: u8) -> u32 {
-        let mut score: u32 = 0;
+    pub fn score_change(&self, tile_idx: u8) -> i64 {
+        let mut score: i64 = 0;
 
         for (orientation, rule_idx) in Self::TILE_LINES[tile_idx as usize].iter().enumerate() {
             let indeces: Vec<u8> = Self::LINES[orientation][*rule_idx as usize].iter()
@@ -145,7 +145,7 @@ impl Board {
                 .collect();
 
             if pieces.iter().all(|&p| p == pieces[0]) && pieces[0] != INVALID {
-                score += pieces[0] as u32 * indeces.len() as u32;
+                score += pieces[0] as i64 * indeces.len() as i64;
             }
         }
 
