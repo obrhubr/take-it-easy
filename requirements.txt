@@ -3,3 +3,5 @@ numpy
 tqdm
 pandas
 matplotlib
+wheel
+maturin
