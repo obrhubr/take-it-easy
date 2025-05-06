@@ -337,7 +337,7 @@ class Trainer:
 
 			# Save model and trainer after every step
 			self.iteration += 1
-			self.save()
+			self.save(save_model=self.iteration > 20)
 		return
 	
 	def __getstate__(self):
@@ -378,9 +378,13 @@ class Trainer:
 
 		return self
 	
-	def save(self, filename = "trainer.pkl"):
+	def save(self, filename = "trainer.pkl", save_model: bool = False):
 		torch.save(self, filename)
-		self.net.save()
+
+		if save_model:
+			scores = self.scores[-1]["scores"]
+			mean, mins, maxs = np.mean(scores), np.min(scores), np.max(scores)
+			self.net.save(filename=f"{self.iteration - 1}-{mean:.2f}-{mins}-{maxs}.pkl")
 
 class NNMaximiser(Maximiser):
 	"""
