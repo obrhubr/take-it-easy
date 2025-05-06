@@ -433,7 +433,7 @@ class NNMaximiser(Maximiser):
 if __name__ == "__main__":
 
 	# Load the trainer from file and continue
-	if True:
+	if False:
 		trainer = Trainer.load()
 	else:
 		trainer = Trainer()
