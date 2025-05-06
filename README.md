@@ -1,7 +1,7 @@
 # Take It Easy
 
  - Simple `python` implementation of Take it Easy with a nice API and support for generating visualisations
- - Optimised `rust` bindings for `python` that implement a faster, optimised version (in the `parallel` branch)
+ - Optimised `rust` bindings for `python` that implement a faster, optimised version.
 
 See the [rules](#game), how to [use the library](#usage) and the details about the following [bots](#bots):
  - [Naïve heuristic based on probabilities](#bots)
@@ -85,6 +85,18 @@ To run a benchmark comparing the approaches, I recommend running `python3 benchm
 
 The architecture of the neural network used to play the game was fully copied from the [polarbart/TakeItEasyAI](https://github.com/polarbart/TakeItEasyAI) repository.
 
-I reimplemented his DQN approach as a learning tool under `nn.py`.
+I reimplemented his DQN approach to learn more about reinforcement learning in the file `nn.py`.
 
-The implementation in the `master` branch was written to be easily readable and understandable. Once I had understood [polarbart](https://github.com/polarbart)'s approach, I implemented an optimised `Trainer` using `rust` bindings in the `parallel` branch.
+### Train a model yourself
+
+Install cargo and rust then run `pip3 install -r requirements.txt` (the package `maturin` is required for the bindings).
+
+Compile the rust bindings by running `./make.sh` (make it executable using `chmod +x make.sh` before). This should automatically install the wheel into your current environment.
+
+You can then start training with `python3 nn.py` or configure the hyperparameters first.
+
+### Why `rust` bindings
+
+The rust version implements the `BatchedBoard` class, which allows playing n games at the same time. This speeds up training massively, as the bottle-neck (inference on the model) is eliminated through batch inference.
+
+The other speed-up is implementing incremental one-hot encoding. By only modifying the one-hot encoding for the tile the piece was placed on, is faster than always starting from 0.
