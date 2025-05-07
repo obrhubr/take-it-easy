@@ -390,12 +390,12 @@ class NNMaximiser(Maximiser):
 	"""
 	Implements the neural network powered maximiser. Overrides the heuristic function.
 	"""
-	def __init__(self, board: Board, debug: bool = False):
+	def __init__(self, board: Board, debug: bool = False, filename="model.pkl"):
 		# Weigh reward and neural network heuristic the same
 		super().__init__(board, debug)
 
 		self.net = Network()
-		self.net.load(device="cpu")
+		self.net.load(filename=filename, device="cpu")
 		self.net.net.eval()
 
 	@torch.no_grad()

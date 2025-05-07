@@ -9,19 +9,16 @@ from takeiteasy import Board
 from simple import SimpleMaximiser
 from nn import NNMaximiser
 
-# Specify the solvers to benchmark
-SOLVERS = ["nn", "maximiser"]
-
-def select_solver(solver_name: str, board: Board) -> SimpleMaximiser | NNMaximiser:
+def select_solver(solver_config: dict, board: Board) -> SimpleMaximiser | NNMaximiser:
 	"""
 	Return the requested solver instantiated with the board.
 	"""
-	if solver_name == "maximiser":
-		solver = SimpleMaximiser(board.clone())
-	elif solver_name == "nn":
-		solver = NNMaximiser(board.clone())
+	if solver_config["type"] == "maximiser":
+		solver = SimpleMaximiser(board.clone(), **solver_config["config"])
+	elif solver_config["type"] == "nn":
+		solver = NNMaximiser(board.clone(), **solver_config["config"])
 	else:
-		raise Exception(f"Solver \"{solver_name}\" does not exist.")
+		raise Exception(f"Solver \"{solver_config['type']}\" does not exist.")
 	
 	return solver
 
@@ -39,7 +36,7 @@ def run_game(seed: int, solver_name: str) -> tuple[int, int, float]:
 
 	return score, board.seed, end - start
 
-def benchmark_parallel(solver_name: str, N: int = 1000) -> tuple[list[int], list[float], list[int]]:
+def benchmark_parallel(solver_config: dict, N: int = 1000) -> tuple[list[int], list[float], list[int]]:
 	"""
 	Simulate N games in parallel.
 	Ideal for solvers that are quick to initialise.
@@ -52,9 +49,9 @@ def benchmark_parallel(solver_name: str, N: int = 1000) -> tuple[list[int], list
 	tasks = []
 	with ProcessPoolExecutor() as executor:
 		for num in range(N):
-			tasks.append(executor.submit(run_game, int(rand[num]), solver_name))
+			tasks.append(executor.submit(run_game, int(rand[num]), solver_config))
 
-		for future in tqdm(tasks, unit="games", desc=f"Benchmarking: {solver_name}"):
+		for future in tqdm(tasks, unit="games", desc=f"Benchmarking: {solver_config['type']}"):
 			score, seed, elapsed = future.result()
 			scores.append(score)
 			seeds.append(seed)
@@ -73,7 +70,7 @@ def benchmark(solver_name: str, N: int = 1000) -> tuple[list[int], list[float], 
 
 	solver = select_solver(solver_name, Board())
 	
-	for num in tqdm(range(N), desc=f"Benchmarking: {solver_name}"):
+	for num in tqdm(range(N), desc=f"Benchmarking: {solver_name['type']}"):
 		seed = int(rand[num])
 		solver.board = Board(seed=seed)
 		
@@ -94,10 +91,10 @@ def analyse_output(scores: list[int], times: list[float], seeds: list[int], N: i
 	print()
 	
 	data = []
-	for solver in SOLVERS:
-		sc, t = scores[solver], times[solver]
+	for idx, solver_config in enumerate(SOLVERS):
+		sc, t = scores[idx], times[idx]
 
-		print(f"Solver {solver}:")
+		print(f"Solver {idx} ({solver_config}):")
 		print(f"Total {np.sum(sc)} after {N} iterations.")
 		print(f"Took a total of {np.sum(t):.2f}s, avg of {np.mean(t):.4f} per round.")
 		print(f"Mean: {np.mean(sc)}")
@@ -106,24 +103,31 @@ def analyse_output(scores: list[int], times: list[float], seeds: list[int], N: i
 		print()
 
 		if export_data:
-			for score, t, seed in zip(scores[solver], times[solver], seeds[solver]):
-				data += [{"solver": solver, "scores": score, "times": t, "seeds": seed }]
+			for score, t, seed in zip(scores[idx], times[idx], seeds[idx]):
+				data += [{"solver": idx, "scores": score, "times": t, "seeds": seed }]
 
 	if export_data:
 		df = pd.DataFrame(data)
 		df.to_csv("data.csv")
 
 def run_benchmark(N: int = 1000):
-	scores, times, seeds = {idx: [] for idx in SOLVERS}, {idx: [] for idx in SOLVERS}, {idx: [] for idx in SOLVERS}
+	scores, times, seeds = {idx: [] for idx in range(len(SOLVERS))}, {idx: [] for idx in range(len(SOLVERS))}, {idx: [] for idx in range(len(SOLVERS))}
 
-	for solver_name in SOLVERS:
-		if solver_name == "nn":
-			scores[solver_name], times[solver_name], seeds[solver_name] = benchmark(solver_name, N)
-		elif solver_name == "maximiser":
-			scores[solver_name], times[solver_name], seeds[solver_name] = benchmark_parallel(solver_name, N)
+	for idx, solver_config in enumerate(SOLVERS):
+		if solver_config["type"] == "nn":
+			scores[idx], times[idx], seeds[idx] = benchmark(solver_config, N)
+		elif solver_config["type"] == "maximiser":
+			scores[idx], times[idx], seeds[idx] = benchmark_parallel(solver_config, N)
 
 	return scores, times, seeds
-	
+
+# Specify the solvers to benchmark
+# Typer either "nn" (parallel: False) or "maximiser" (parallel: True)
+SOLVERS = [
+	{"type": "nn", "config": {}},
+	{"type": "maximiser", "config": {}}
+]
+
 if __name__ == "__main__":
 	N = 100
 	scores, times, seeds = run_benchmark(N)
