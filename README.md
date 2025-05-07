@@ -9,6 +9,8 @@ See the [rules](#game), how to [use the library](#usage) and the details about t
  - [MCTS based solver](#bots)
  - [Neural Network based solver using DQN](#neural-network)
 
+If you want to learn more about the models and training, check out the [detailed training logs](./models/README.md).
+
 ## Game
 
 [Take It Easy](https://en.wikipedia.org/wiki/Take_It_Easy_(game)) is a single player strategy board game involving a hexagonal board with 19 tiles and 27 pieces.
@@ -92,6 +94,8 @@ I have included three different pretrained networks under `models/` which you ca
  - "large.pkl" 	- hidden_size = 2048, mean=167.78, min=55, max=281
  - "medium.pkl" - hidden_size = 1024, mean=166,80, min=68, max=275
  - "mini.pkl" 	- hidden_size =  512, mean=164.69, min=43, max=268
+
+If you want to learn more about the models and training, check out the [detailed training logs](./models/README.md).
 
 ### Train a model yourself
 

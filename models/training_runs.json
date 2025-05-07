@@ -1,0 +1,254 @@
+[
+    {
+        "name": "hidden-4096",
+        "games": 16384,
+        "game_batch_size": 512,
+        "batch_size": 512,
+        "validation_steps": 16384,
+        "iteration": 33,
+        "lr": 0.0003,
+        "lr_decay": 0.97,
+        "epsilon": 0.5,
+        "epsilon_decay": 0.95,
+        "final_epsilon": 0.95,
+        "net_hidden_size": 4096,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 166.53570556640625,
+            "min": 48.0,
+            "max": 267.0,
+            "iteration": 30
+        }
+    },
+    {
+        "name": "output-150",
+        "games": 16384,
+        "game_batch_size": 512,
+        "batch_size": 512,
+        "validation_steps": 16384,
+        "iteration": 41,
+        "lr": 0.0003,
+        "lr_decay": 0.97,
+        "epsilon": 0.5,
+        "epsilon_decay": 0.95,
+        "final_epsilon": 0.95,
+        "net_hidden_size": 2048,
+        "net_output_size": 150,
+        "best_model": {
+            "mean": 166.2657470703125,
+            "min": 65.0,
+            "max": 258.0,
+            "iteration": 36
+        }
+    },
+    {
+        "name": "default",
+        "games": 16384,
+        "game_batch_size": 256,
+        "batch_size": 256,
+        "validation_steps": 16384,
+        "iteration": 75,
+        "lr": 0.0003,
+        "lr_decay": 0.97,
+        "epsilon": 0.5,
+        "epsilon_decay": 0.95,
+        "final_epsilon": 0.95,
+        "net_hidden_size": 2048,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 168.0596923828125,
+            "min": 55.0,
+            "max": 255.0,
+            "iteration": 133
+        }
+    },
+    {
+        "name": "lr-0.001-eps-0.6",
+        "games": 65536,
+        "game_batch_size": 2048,
+        "batch_size": 2048,
+        "validation_steps": 16384,
+        "iteration": 51,
+        "lr": 0.001,
+        "lr_decay": 0.98,
+        "epsilon": 0.6,
+        "epsilon_decay": 0.99,
+        "final_epsilon": 0.99,
+        "net_hidden_size": 1024,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 166.08892822265625,
+            "min": 45.0,
+            "max": 249.0,
+            "iteration": 48
+        }
+    },
+    {
+        "name": "lr-0.001",
+        "games": 16384,
+        "game_batch_size": 1024,
+        "batch_size": 1024,
+        "validation_steps": 16384,
+        "iteration": 68,
+        "lr": 0.001,
+        "lr_decay": 0.98,
+        "epsilon": 0.6,
+        "epsilon_decay": 0.99,
+        "final_epsilon": 0.99,
+        "net_hidden_size": 1024,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 166.8485107421875,
+            "min": 60.0,
+            "max": 275.0,
+            "iteration": 66
+        }
+    },
+    {
+        "name": "eps-0.6",
+        "games": 32768,
+        "game_batch_size": 512,
+        "batch_size": 512,
+        "validation_steps": 16384,
+        "iteration": 17,
+        "lr": 0.0003,
+        "lr_decay": 0.97,
+        "epsilon": 0.6,
+        "epsilon_decay": 0.95,
+        "final_epsilon": 0.95,
+        "net_hidden_size": 1024,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 160.8114013671875,
+            "min": 52.0,
+            "max": 267.0,
+            "iteration": 15
+        }
+    },
+    {
+        "name": "eps-0.8",
+        "games": 16384,
+        "game_batch_size": 1024,
+        "batch_size": 1024,
+        "validation_steps": 16384,
+        "iteration": 61,
+        "lr": 0.0003,
+        "lr_decay": 0.99,
+        "epsilon": 0.8,
+        "epsilon_decay": 0.999,
+        "final_epsilon": 0.999,
+        "net_hidden_size": 2048,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 164.076416015625,
+            "min": 55.0,
+            "max": 258.0,
+            "iteration": 60
+        }
+    },
+    {
+        "name": "lr-0.001-eps-0.5",
+        "games": 16384,
+        "game_batch_size": 1024,
+        "batch_size": 1024,
+        "validation_steps": 16384,
+        "iteration": 84,
+        "lr": 0.001,
+        "lr_decay": 0.97,
+        "epsilon": 0.5,
+        "epsilon_decay": 0.95,
+        "final_epsilon": 0.95,
+        "net_hidden_size": 2048,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 167.3492431640625,
+            "min": 45.0,
+            "max": 269.0,
+            "iteration": 76
+        }
+    },
+    {
+        "name": "hidden-4092-lr-0.001-eps-0.6",
+        "games": 32768,
+        "game_batch_size": 512,
+        "batch_size": 512,
+        "validation_steps": 16384,
+        "iteration": 53,
+        "lr": 0.001,
+        "lr_decay": 0.98,
+        "epsilon": 0.6,
+        "epsilon_decay": 0.99,
+        "final_epsilon": 0.99,
+        "net_hidden_size": 4092,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 166.54229736328125,
+            "min": 57.0,
+            "max": 255.0,
+            "iteration": 48
+        }
+    },
+    {
+        "name": "hidden-512-lr-0.001-eps-0.6",
+        "games": 16384,
+        "game_batch_size": 1024,
+        "batch_size": 1024,
+        "validation_steps": 16384,
+        "iteration": 48,
+        "lr": 0.001,
+        "lr_decay": 0.98,
+        "epsilon": 0.6,
+        "epsilon_decay": 0.99,
+        "final_epsilon": 0.99,
+        "net_hidden_size": 512,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 164.69256591796875,
+            "min": 52.0,
+            "max": 268.0,
+            "iteration": 47
+        }
+    },
+    {
+        "name": "hidden-1024-lr-0.001-eps-0.6",
+        "games": 32768,
+        "game_batch_size": 1024,
+        "batch_size": 1024,
+        "validation_steps": 16384,
+        "iteration": 65,
+        "lr": 0.001,
+        "lr_decay": 0.98,
+        "epsilon": 0.6,
+        "epsilon_decay": 0.99,
+        "final_epsilon": 0.99,
+        "net_hidden_size": 1024,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 166.47552490234375,
+            "min": 54.0,
+            "max": 260.0,
+            "iteration": 61
+        }
+    },
+    {
+        "name": "hidden-1024-lr-0.01-eps-0.6",
+        "games": 16384,
+        "game_batch_size": 1024,
+        "batch_size": 1024,
+        "validation_steps": 16384,
+        "iteration": 35,
+        "lr": 0.01,
+        "lr_decay": 0.98,
+        "epsilon": 0.6,
+        "epsilon_decay": 0.99,
+        "final_epsilon": 0.99,
+        "net_hidden_size": 1024,
+        "net_output_size": 100,
+        "best_model": {
+            "mean": 160.8883056640625,
+            "min": 37.0,
+            "max": 267.0,
+            "iteration": 34
+        }
+    }
+]
