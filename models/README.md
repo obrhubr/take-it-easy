@@ -8,7 +8,7 @@ If you need any more data or have ideas about configurations that could improve 
 
 ## An overview of training results in graphs:
 
-```json
+```
 Name: default - mean=168.06, min=mean=55.0, max=mean=255.0
 Name: hidden-4096 - mean=166.54, min=mean=48.0, max=mean=267.0
 Name: output-150 - mean=166.27, min=mean=65.0, max=mean=258.0
