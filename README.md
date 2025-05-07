@@ -31,7 +31,7 @@ $$ \binom{27}{19} \cdot 19! \approx 2.7 × 10^{23} \quad \text{possible games} $
 
 ## Usage
 
-Install the required packages using `pip3 install -r requirements.txt`. Then either run the `python3 benchmark.py` or any of the provided bots:
+Install the required packages using `pip3 install -r requirements.txt`. Then either run the `python3 benchmark.py` to test the included models, or you can try out any of the provided bots interactively. Running any of these scripts should create `output.html` which shows you the bot's predictions and allows you to play the game.
  - `python3 simple.py`
  - `python3 mcts.py`
  - `python3 nn.py`
@@ -88,6 +88,11 @@ The architecture of the neural network used to play the game was fully copied fr
 
 I reimplemented his DQN approach to learn more about reinforcement learning in the file `nn.py`.
 
+I have included three different pretrained networks under `models/` which you can try with `python3 benchmark.py`:
+ - "large.pkl" 	- hidden_size = 2048, mean=167.78, min=55, max=281
+ - "medium.pkl" - hidden_size = 1024, mean=166,80, min=68, max=275
+ - "mini.pkl" 	- hidden_size =  512, mean=164.69, min=43, max=268
+
 ### Train a model yourself
 
 #### On your own machine
@@ -96,7 +101,7 @@ Install cargo and rust then run `pip3 install -r requirements.txt` (the package 
 
 Compile the rust bindings by running `./make.sh` (make it executable using `chmod +x make.sh` before). This should automatically install the wheel into your current environment.
 
-You can then start training with `python3 nn.py` or configure the hyperparameters first.
+You can then start training with `python3 train.py` or configure the hyperparameters first.
 
 #### On [Google Colab](https://colab.google)
 
@@ -114,7 +119,7 @@ Then upload the pre-built `.whl` file from the [Releases](https://github.com/obr
 !pip3 install rust_takeiteasy-0.1.0-cp311-cp311-manylinux_2_34_x86_64.whl
 ```
 
-Customise the hyperparameters or simply create a new default model by running `python3 nn.py`.
+Customise the hyperparameters or simply create a new default model by running `python3 train.py`.
 
 ### Why `rust` bindings?
 

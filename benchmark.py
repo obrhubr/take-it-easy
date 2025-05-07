@@ -7,7 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from takeiteasy import Board
 
 from simple import SimpleMaximiser
-from nn import NNMaximiser
+from train import NNMaximiser
 
 def select_solver(solver_config: dict, board: Board) -> SimpleMaximiser | NNMaximiser:
 	"""
@@ -124,11 +124,13 @@ def run_benchmark(N: int = 1000):
 # Specify the solvers to benchmark
 # Typer either "nn" (parallel: False) or "maximiser" (parallel: True)
 SOLVERS = [
-	{"type": "nn", "config": {}},
+	{"type": "nn", "config": {"filename": "./models/large.pkl"}}, # hidden_size = 2048, mean=167.78, min=55, max=281
+	{"type": "nn", "config": {"filename": "./models/medium.pkl"}}, # hidden_size = 1024, mean=166,80, min=68, max=275
+	{"type": "nn", "config": {"filename": "./models/mini.pkl"}}, # hidden_size = 512, mean=164.69, min=43, max=268
 	{"type": "maximiser", "config": {}}
 ]
 
 if __name__ == "__main__":
-	N = 100
+	N = 1000
 	scores, times, seeds = run_benchmark(N)
 	analyse_output(scores, times, seeds, N)
