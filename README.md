@@ -1,10 +1,10 @@
 # Take It Easy
 
- - Simple `python` implementation of Take it Easy with a nice API and support for generating visualisations
+ - `python` implementation of Take it Easy with a simple API and support for generating visualisations of the board (as HTML)
  - Optimised `rust` bindings for `python` that implement a faster, optimised version.
  - [Pre-built wheels to train your own model on Google Colab](#train-a-model-yourself)
 
-See the [rules](#game), how to [use the library](#usage) and the details about the following [bots](#bots):
+See the [rules](#game), how to [use the library](#usage) and the details about the following [bots](#bots) and approaches to "solving" the game I implemented:
  - [Naïve heuristic based on probabilities](#bots)
  - [MCTS based solver](#bots)
  - [Neural Network based solver using DQN](#neural-network)
@@ -38,7 +38,7 @@ Install the required packages using `pip3 install -r requirements.txt`. Then eit
  - `python3 mcts.py`
  - `python3 nn.py`
 
-In case you want to use the implementation of the game, see the following example. The implementation of `Board` is also well documented.
+In case you want to use the `takeiteasy` library I implemented, see the following example. The implementation of `Board` under `takeiteasy/board.py` is also pretty self-documenting.
 
 ```python
 from takeiteasy import Board
@@ -73,22 +73,27 @@ class MyMaximise(Maximiser):
 		...
 ```
 
+You can then test your own bot with `benchmark.py` or start a simple game with: 
+
+```python
+maximiser = MyMaximiser(Board())
+maximiser.interactive()
+```
+
 ## Bots
 
-Due to the computational impossibility of computing all possible games, we have to make due with heuristics.
+Due to the sheer number of gamestates, we have to make due with heuristics in order to approach "solving" the game.
 
 I implemented multiple solutions:
  1. A neural-network implemented as inspired/copied from [polarbart/TakeItEasyAI](https://github.com/polarbart/TakeItEasyAI)
  2. Monte-Carlo Tree Search
  3. Simple heuristic that uses the amount of pieces that are left and the probability of drawing each piece
 
-To run a benchmark comparing the approaches, I recommend running `python3 benchmark.py`. This should give you a statistical basis for comparisons and aid in developing new heuristics.
-
 ## Neural Network
 
 The architecture of the neural network used to play the game was fully copied from the [polarbart/TakeItEasyAI](https://github.com/polarbart/TakeItEasyAI) repository.
 
-I reimplemented his DQN approach to learn more about reinforcement learning in the file `nn.py`.
+I reimplemented his DQN approach to learn more about reinforcement learning.
 
 I have included three different pretrained networks under `models/` which you can try with `python3 benchmark.py`:
  - "large.pkl" 	- hidden_size = 2048, mean=167.78, min=55, max=281
@@ -109,7 +114,7 @@ You can then start training with `python3 train.py` or configure the hyperparame
 
 #### On [Google Colab](https://colab.google)
 
-If you want to train the model on a free GPU, you can use Google Colab. Create a new notebook and paste in the following code:
+If you want to train the model on a free GPU, you can use [Google Colab](https://colab.google). Create a new notebook and paste in the following code:
 
 ```
 !git clone https://github.com/obrhubr/take-it-easy
@@ -130,3 +135,9 @@ Customise the hyperparameters or simply create a new default model by running `p
 The `BatchedBoard` class was implemented in `rust` to speed up training massively. It allows playing `n` games at the same time. This speeds up training massively, as the bottle-neck (inference on the model) is eliminated through batch inference.
 
 Another substantial speed-up was achieved by implementing *incremental one-hot encoding*. By only updating the encoding at the tile the new piece was placed on, you can save a lot of time compared to always starting from scratch.
+
+## Acknowledgments
+
+Full credit for the neural network architecture goes to [polarbart/TakeItEasyAI](https://github.com/polarbart/TakeItEasyAI).
+
+If you have any suggestions to improve on my work or to optimise the `rust` code, I would love to hear your thoughts: find my mail on [obrhubr.org](https://obrhubr.org).

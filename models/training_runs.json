@@ -43,11 +43,11 @@
     },
     {
         "name": "default",
-        "games": 16384,
-        "game_batch_size": 256,
+        "games": 32768,
+        "game_batch_size": 1024,
         "batch_size": 256,
         "validation_steps": 16384,
-        "iteration": 75,
+        "iteration": 142,
         "lr": 0.0003,
         "lr_decay": 0.97,
         "epsilon": 0.5,
@@ -81,27 +81,6 @@
             "min": 45.0,
             "max": 249.0,
             "iteration": 48
-        }
-    },
-    {
-        "name": "lr-0.001",
-        "games": 16384,
-        "game_batch_size": 1024,
-        "batch_size": 1024,
-        "validation_steps": 16384,
-        "iteration": 68,
-        "lr": 0.001,
-        "lr_decay": 0.98,
-        "epsilon": 0.6,
-        "epsilon_decay": 0.99,
-        "final_epsilon": 0.99,
-        "net_hidden_size": 1024,
-        "net_output_size": 100,
-        "best_model": {
-            "mean": 166.8485107421875,
-            "min": 60.0,
-            "max": 275.0,
-            "iteration": 66
         }
     },
     {
