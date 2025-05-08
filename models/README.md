@@ -2,7 +2,7 @@
 
 When I first looked at the repository [polarbart/TakeItEasyAI](https://github.com/polarbart/TakeItEasyAI) and tried to reproduce the results, I wished that I had more details about his attempts and different experiments.
 
-To make life simpler for those wanting to also train their own model, I have included `training_runs.json` and `full_results.json`. This contains a full log of all experiments and their results.
+To make life simpler for those also wanting to train their own model, I have included `training_runs.json` and `full_results.json`. This contains a full log of all experiments and their results.
 
 The first file (`training_runs.json`) contains an overview of all hyperparameter configurations I tried and the best results I got. The second file (`full_results.json`) contains the results for each iteration of the training runs, with which you can reconstruct the progress during training.
 
@@ -43,6 +43,6 @@ The learning rate maxes out at the same time that scores over ~160 are achieved,
 
 ![Comparing loss during training.](../.github/loss.png)
 
-This one vs. one comparison of all models shows no meaningfull differences between them, but there are some slight variations in mean score.
+This one vs. one comparison of all models shows only slight differences between them, but there are some variations in mean score and the distribution of the scores.
 
 ![A one-to-one comparison of the different model's histograms](../.github/histograms.png)
