@@ -7,7 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from takeiteasy import Board
 
 from simple import SimpleMaximiser
-from train import NNMaximiser
+from nn import NNMaximiser
 
 def select_solver(solver_config: dict, board: Board) -> SimpleMaximiser | NNMaximiser:
 	"""
@@ -19,7 +19,7 @@ def select_solver(solver_config: dict, board: Board) -> SimpleMaximiser | NNMaxi
 		solver = NNMaximiser(board.clone(), **solver_config["config"])
 	else:
 		raise Exception(f"Solver \"{solver_config['type']}\" does not exist.")
-	
+
 	return solver
 
 def run_game(seed: int, solver_name: str) -> tuple[int, int, float]:
@@ -45,7 +45,7 @@ def benchmark_parallel(solver_config: dict, N: int = 1000) -> tuple[list[int], l
 	scores, times, seeds = [], [], []
 
 	rand = np.random.randint(0, N*100, size=(N)) + int(time.time())
-	
+
 	tasks = []
 	with ProcessPoolExecutor() as executor:
 		for num in range(N):
@@ -69,11 +69,11 @@ def benchmark(solver_name: str, N: int = 1000) -> tuple[list[int], list[float], 
 	rand = np.random.randint(0, N*100, size=(N)) + int(time.time())
 
 	solver = select_solver(solver_name, Board())
-	
+
 	for num in tqdm(range(N), desc=f"Benchmarking: {solver_name['type']}"):
 		seed = int(rand[num])
 		solver.board = Board(seed=seed)
-		
+
 		start = time.time()
 		score = solver.play_game()
 		end = time.time()
@@ -89,7 +89,7 @@ def analyse_output(scores: list[int], times: list[float], seeds: list[int], N: i
 	Pretty print results of benchmark (mean, median, worst, best) and return a csv with the data.
 	"""
 	print()
-	
+
 	data = []
 	for idx, solver_config in enumerate(SOLVERS):
 		sc, t = scores[idx], times[idx]
